@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audioguida</title>
+    <!-- <script type="module"> import shikwasa from 'https://cdn.jsdelivr.net/npm/shikwasa@2.2.1/+esm' </script> -->
+    <!-- <script>src="https://cdn.jsdelivr.net/npm/shikwasa@latest/dist/shikwasa.min.js"</script> -->
+    <link rel="stylesheet" href="shinkwasa.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: sans-serif;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="metadata">
+        <img src="carmignano.png" style="width: 100%; height: auto; margin: 0; padding: 0; max-height: 80vh; top: 0; left: 0;">
+    </div>
+    <div id="player">
+
+    </div>
+    <script type="module">
+        // import shikwasa from 'https://cdn.jsdelivr.net/npm/shikwasa@2.2.1/+esm';
+
+        import { Player } from './shinkwasa.js';
+        import { Chapter } from './shinkwasa.js';
+        document.addEventListener('DOMContentLoaded', () => {
+            const player = new Player({
+            container: () => document.querySelector('#player'),
+            audio: {
+                title: 'Il Giardino Ducale nel Secolo XVIII',
+                artist: 'Carmignani Guido - 1878/1880',
+                cover: 'carmignano.png',
+                src: 'demo.mp3',
+            },
+            themeColor: "#954747",
+            })
+            
+        })
+        </script>
+</body>
+</html>
