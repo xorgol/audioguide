@@ -438,6 +438,12 @@ svg.shk-btn_mute {
 .shk[data-live] .shk-live {
   display: inline-flex;
 }
+
+#player {
+  bottom: 0px;
+  position: absolute;
+  width: 100vw;
+}
 @media (min-width: 641px) {
   .shk-player {
     box-shadow: var(--shadow-body);

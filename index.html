@@ -24,6 +24,7 @@
         z-index: -1;
         margin-bottom: 1em;
         height: calc(50vh - 120px - 3em);
+        max-width: 99vw;
       }
 
       #metadata > img {
@@ -37,50 +38,29 @@
         margin-top: 1em;
         background-color: white;
         padding-bottom: 2em;
-
+      }
+      #player {
+        bottom: 0px;
+        position: absolute;
+        width: 100vw;
       }
     </style>
   </head>
   <body>
     <div id="metadata">
-      <img src="carmignano.png" style="" />
+      <img src="organ.jpg" style="" />
     </div>
     <p>
       Ciao, questo è un prototipo di audioguida. Inquadrando il codice QR al di
       sotto del quadro, senza bisogno di alcuna installazione, si aprirà
       automaticamente questa guida, da ascoltare con le tue cuffie o con quelle
       che ti verranno date in dotazione dal museo. Nella parte superiore dello
-      schermo comparirà una piccola riproduzione del quadro in considerazione,
-      in questo caso “Il Giardino Ducale alla metà del secolo XVIII” di Guido
-      Carmignani, come indicato L’immagine è piccola e discreta per non
-      distogliere l’attenzione dello spettatore dal quadro reale: il suo scopo è
-      principalmente quello di confermare che sì, è effettivamente quello il
-      quadro di cui stiamo parlando, e di evidenziare alcuni dettagli specifici
-      su cui la guida richiama l’attenzione. Il grande vaso di Jean Baptiste
-      Boudard, per esempio L’interfaccia alla base dello schermo è semplice e
-      immediata. Permette di interrompere la riproduzione e di farla ripartire,
-      di avanzare e retrocedere nella guida, e di attivare e disattivare i
-      sottotitoli. Il testo può essere suddiviso in capitoli, selezionabili
-      individualmente. Questo permette di organizzare il contenuto
-      tematicamente, approfondendo il periodo storico, la corrente artistica di
-      riferimento, o la vita dell’autore, oltre alla descrizione dell’opera.
-      Questa può essere accompagnata da una sonorizzazione, aumentando
-      notevolmente l’immersività. Una scena di genere ambientata in un parco
-      cittadino, per esempio, si può arricchire con lo stormire della
-      vegetazione e il cinguettare degli uccelli. Le figure maschili e
-      femminili in abiti settecenteschi che passeggiano, conversano o si
-      riposano all'ombra degli alberi sono accompagnate da chiacchiericcio e
-      fruscio di stoffe. L’utilizzo di un’audioguida digitale di questo
-      tipo permette lo sviluppo di molte funzionalità aggiuntive. Si può, per
-      esempio, prevedere la funzione multilingua, o pianificare diversi
-      livelli di “esperienza”, adattando il modo in cui viene trasmesso
-      il contenuto al livello di conoscenza del singolo utente. Questo
-      consentirebbe l’aggiunta di contenuti specifici per un determinato tipo di
-      pubblico: per un pubblico infantile, per esempio, oltre a prevedere una
-      spiegazione adatta all’età, permetterebbe l’inserimento di attività
-      specifiche e piccoli giochi, per mantenere alta l’attenzione della fascia
-      di pubblico più facilmente distraibile. Per passare al prossimo quadro, è
-      sufficiente scansionare il codice QR seguente.
+      schermo comparirà una piccola riproduzione dell'organo in considerazione,
+      o un modello 3D dello stesso.
+      Se c'è da inserire un testo descrittivo possiamo anche sincronizzare audio e testo.
+      
+      Immagine di esempio presa da <a href="https://pixabay.com/it/photos/organo-strumento-musicale-chiesa-513626/">pixabay</a>
+      Souno di esempio con licenza Creative Commons Attribution, preso da: <a href="https://freesound.org/people/kevp888/sounds/615215/">freesound</a>
     </p>
     <div id="player"></div>
     <script type="module">
@@ -92,10 +72,10 @@
         const player = new Player({
           container: () => document.querySelector("#player"),
           audio: {
-            title: "Il Giardino Ducale nel Secolo XVIII",
-            artist: "Carmignani Guido - 1878/1880",
-            cover: "carmignano.png",
-            src: "demo.mp3",
+            title: "220118_1781-1_FR_ChurchOrgan.wav",
+            artist: "kevp888",
+            cover: "organ.jpg",
+            src: "organ.mp3",
           },
           themeColor: "#954747",
         });
