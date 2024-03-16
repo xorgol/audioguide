@@ -3,6 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta property="og:image" content="https://e-muse.it/logo.jpg" />
+    <link href="https://e-muse.it/favicon.png" rel="shortcut icon" type="image/x-icon" />
+    <link href="https://e-muse.it/favicon.png" rel="apple-touch-icon" />
+
     <title>Audioguida</title>
     <!-- <script type="module"> import shikwasa from 'https://cdn.jsdelivr.net/npm/shikwasa@2.2.1/+esm' </script> -->
     <!-- <script>src="https://cdn.jsdelivr.net/npm/shikwasa@latest/dist/shikwasa.min.js"</script> -->
@@ -44,11 +48,17 @@
         position: absolute;
         width: 100vw;
       }
+
+      .shk-btn_speed {
+        display: none;
+      }
+  
     </style>
+  <link rel="manifest" href="manifest.json" />  <script>navigator.serviceWorker.register("service-worker.js")</script> 
   </head>
   <body>
     <div id="metadata">
-      <img src="organ.jpg" style="" />
+      <img src="organ.jpg" style="" alt="Image of a pipe organ"/>
     </div>
     <p>
       Ciao, questo è un prototipo di audioguida. Inquadrando il codice QR al di
@@ -60,7 +70,7 @@
       Se c'è da inserire un testo descrittivo possiamo anche sincronizzare audio e testo.
       
       Immagine di esempio presa da <a href="https://pixabay.com/it/photos/organo-strumento-musicale-chiesa-513626/">pixabay</a>
-      Souno di esempio con licenza Creative Commons Attribution, preso da: <a href="https://freesound.org/people/kevp888/sounds/615215/">freesound</a>
+      Suono di esempio con licenza Creative Commons Attribution, preso da: <a href="https://freesound.org/people/kevp888/sounds/615215/">freesound</a>
     </p>
     <div id="player"></div>
     <script type="module">
