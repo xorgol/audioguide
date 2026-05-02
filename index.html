@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Audioguida | E-MUSE</title>
+    <link rel="stylesheet" href="shinkwasa.css" />
+    <style>
+      :root {
+        --primary-color: #954747;
+        --bg-color: #ffffff;
+        --text-color: #333333;
+        --highlight-color: #ffd700;
+        --dim-color: #888888;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      header {
+        flex: 0 0 auto;
+        padding: 1rem;
+        text-align: center;
+        border-bottom: 1px solid #eee;
+      }
+
+      main {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        padding-bottom: 120px; /* Space for player */
+      }
+
+      .image-container {
+        flex: 0 0 auto;
+        max-height: 40vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 1rem;
+        background-color: #f9f9f9;
+      }
+
+      .image-container img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        border-radius: 4px;
+      }
+
+      #transcript {
+        flex: 1 1 auto;
+        padding: 1.5rem 2rem;
+        font-size: 1.25rem;
+        line-height: 1.6;
+        overflow-y: visible; /* Scroll is handled by main */
+      }
+
+      .word {
+        cursor: pointer;
+        padding: 0 2px;
+        border-radius: 3px;
+        transition: background-color 0.2s, color 0.2s;
+        color: var(--dim-color);
+      }
+
+      .word:hover {
+        background-color: #f0f0f0;
+        color: var(--text-color);
+      }
+
+      /* Base highlight style */
+      .word.active {
+        background-color: var(--highlight-color) !important;
+        color: #000 !important;
+        font-weight: bold !important;
+      }
+
+      #player-container {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: white;
+        padding: 0.5rem 1rem;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        z-index: 1000;
+      }
+
+      @media (min-width: 768px) {
+        main {
+          flex-direction: row;
+        }
+        .image-container {
+          flex: 0 0 40%;
+          max-height: none;
+          height: calc(100vh - 120px);
+        }
+        #transcript {
+          flex: 1 1 60%;
+          overflow-y: auto;
+          height: calc(100vh - 120px);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h2 id="artwork-title">Il Giardino Ducale</h2>
+      <p id="artwork-artist" style="margin: 0; font-size: 0.9rem; color: #666;">Guido Carmignani (1878/1880)</p>
+    </header>
+
+    <main>
+      <div class="image-container">
+        <img src="carmignano.png" alt="Il Giardino Ducale alla metà del secolo XVIII" />
+      </div>
+      <div id="transcript">
+        <p style="font-size: 0.9rem; color: #999; margin-bottom: 1rem; font-style: italic;">
+          Tocca una parola per saltare a quel punto dell'audio.
+        </p>
+        <div id="transcript-content">
+          <!-- Words will be dynamically loaded here for synchronization -->
+          Caricamento trascrizione...
+        </div>
+      </div>
+    </main>
+
+    <div id="player-container">
+      <div id="player"></div>
+    </div>
+
+    <script type="module">
+      import { Player } from "./shinkwasa.js";
+
+      document.addEventListener("DOMContentLoaded", async () => {
+        const transcriptContent = document.getElementById('transcript-content');
+
+        const player = new Player({
+          container: () => document.querySelector("#player"),
+          audio: {
+            title: "Il Giardino Ducale nel Secolo XVIII",
+            artist: "Carmignani Guido - 1878/1880",
+            cover: "carmignano.png",
+            src: "demo.mp3",
+          },
+          themeColor: "#954747",
+        });
+
+        window.player = player;
+
+        let lastActive = null;
+
+        const updateHighlight = (currentTime) => {
+          if (isNaN(currentTime)) return;
+          
+          const words = transcriptContent.querySelectorAll('.word');
+          
+          for (let i = 0; i < words.length; i++) {
+            const word = words[i];
+            const start = parseFloat(word.dataset.start);
+            const end = parseFloat(word.dataset.end);
+            
+            if (currentTime >= start && currentTime <= end) {
+              if (lastActive !== word) {
+                if (lastActive) lastActive.classList.remove('active');
+                word.classList.add('active');
+                lastActive = word;
+                word.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+              break;
+            }
+          }
+        };
+
+        // BULLETPROOF POLLING: Use the player instance directly
+        setInterval(() => {
+          if (window.player && !window.player.paused) {
+            updateHighlight(window.player.currentTime);
+          }
+        }, 100);
+
+        async function loadTranscript() {
+          try {
+            const response = await fetch('timing.json');
+            if (!response.ok) throw new Error('Timing file not found');
+            const data = await response.json();
+            
+            transcriptContent.innerHTML = '';
+            const p = document.createElement('p');
+            data.words.forEach((item) => {
+              const span = document.createElement('span');
+              span.className = 'word';
+              span.dataset.start = item.start;
+              span.dataset.end = item.end;
+              
+              // Handle Italian apostrophes: don't add space if word ends in '
+              const text = item.word;
+              const hasApostrophe = text.endsWith("'") || text.endsWith("’");
+              span.textContent = text + (hasApostrophe ? '' : ' ');
+              
+              span.onclick = () => {
+                player.seek(item.start);
+                player.play();
+              };
+              
+              p.appendChild(span);
+            });
+            transcriptContent.appendChild(p);
+          } catch (e) {
+            console.error('Transcript Error:', e);
+            transcriptContent.innerHTML = `<p style="color: red;">Impossibile caricare la trascrizione sincronizzata.</p>`;
+          }
+        }
+
+        loadTranscript();
+      });
+    </script>
+  </body>
+</html>

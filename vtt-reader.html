@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Muse | Smart Audioguide</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --highlight-color: #f1c40f;
+            --text-dim: #95a5a6;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            line-height: 1.6;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fcfcfc;
+            color: var(--primary-color);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        /* Player Styling - Large for mobile/Ray-Ban users */
+        .audio-container {
+            position: sticky;
+            top: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            z-index: 100;
+        }
+
+        audio {
+            width: 100%;
+        }
+
+        /* Transcript Styling */
+        #transcript {
+            margin-top: 20px;
+            padding-bottom: 100px;
+        }
+
+        .cue {
+            display: inline;
+            cursor: pointer;
+            padding: 3px 5px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            color: var(--text-dim);
+            font-size: 1.1rem;
+            margin-right: 5px;
+        }
+
+        .cue:hover {
+            background-color: #f0f0f0;
+            color: #000;
+        }
+
+        /* The Highlight */
+        .cue.active {
+            background-color: var(--highlight-color);
+            color: #000;
+            font-weight: 500;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        /* Visual indicator for Meta Ray-Ban users */
+        .voice-hint {
+            font-size: 0.8rem;
+            color: #7f8c8d;
+            text-align: center;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Gallery Guide</h1>
+    <p>Tap any sentence to jump to that moment.</p>
+</header>
+
+<div class="audio-container">
+    <audio id="player" controls>
+        <!-- Replace with your actual audio file -->
+        <source src="your-audio.mp3" type="audio/mpeg">
+        <track id="caption-track" kind="captions" src="captions.vtt" srclang="en" label="English" default>
+    </audio>
+    <div class="voice-hint">Hands-free? Just listen and follow along.</div>
+</div>
+
+<div id="transcript">
+    <!-- The library will automatically populate this div -->
+    <p id="transcript-content"></p>
+</div>
+
+<script>
+    const player = document.getElementById('player');
+    const track = document.getElementById('caption-track');
+    const container = document.getElementById('transcript-content');
+
+    // Wait for the track to load
+    track.addEventListener('load', function() {
+        const cues = player.textTracks[0].cues;
+        
+        // 1. Build the transcript from the VTT file
+        for (let i = 0; i < cues.length; i++) {
+            const span = document.createElement('span');
+            span.className = 'cue';
+            span.id = 'cue-' + i;
+            span.textContent = cues[i].text + ' ';
+            
+            // 2. Add "Tap to Seek" functionality
+            const startTime = cues[i].startTime;
+            span.onclick = () => {
+                player.currentTime = startTime;
+                player.play();
+            };
+            
+            container.appendChild(span);
+        }
+    });
+
+    // 3. Highlight text as audio plays
+    player.ontimeupdate = () => {
+        const activeCues = player.textTracks[0].activeCues;
+        
+        // Remove all active classes
+        document.querySelectorAll('.cue').forEach(el => el.classList.remove('active'));
+
+        // Add active class to current cue
+        if (activeCues && activeCues.length > 0) {
+            const currentCueText = activeCues[0].text;
+            
+            // Find the span with matching text/index and highlight it
+            const allSpans = document.querySelectorAll('.cue');
+            for (let i = 0; i < allSpans.length; i++) {
+                const cueObj = player.textTracks[0].cues[i];
+                if (player.currentTime >= cueObj.startTime && player.currentTime <= cueObj.endTime) {
+                    const activeSpan = document.getElementById('cue-' + i);
+                    activeSpan.classList.add('active');
+                    
+                    // Auto-scroll logic for a smooth experience
+                    activeSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    break;
+                }
+            }
+        }
+    };
+</script>
+
+</body>
+</html>

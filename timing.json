@@ -1,0 +1,1750 @@
+{
+  "text": "Ciao, questo è un prototipo di audioguida. Inquadrando il codice QR al di sotto del quadro, senza bisogno di alcuna installazione, si aprerà automaticamente questa guida, da ascoltare con le tue cuffie o con quelle che ti verranno date in dotazione dal museo. Nella parte superiore dello schermo comparirà una piccola riproduzione del quadro in considerazione, in questo caso “Il Giardino Ducale alla metà del secolo XVIII” di Guido Carmignani, come indicato. L’immagine è piccola e discreta per non distogliere l’attenzione dello spettatore dal quadro reale: il suo scopo è principalmente quello di confermare che sì, è effettivamente quello il quadro di cui stiamo parlando, e di evidenziare alcuni dettagli specifici su cui la guida richiama l’attenzione. Il grande vaso di Jean Baptiste Boudard, per esempio. L’interfaccia alla base dello schermo è semplice e immediata. Permette di interrompere la riproduzione e di farla ripartire, di avanzare e retrocedere nella guida, e di attivare e disattivare i sottotitoli. Il testo può essere suddiviso in capitoli, selezionabili individualmente. Questo permette di organizzare il contenuto tematicamente, approfondendo il periodo storico, la corrente artistica di riferimento, o la vita dell’autore, oltre alla descrizione dell’opera. Questa può essere accompagnata da una sonorizzazione, aumentando notevolmente l’immersività. Una scena di genere ambientata in un parco cittadino, per esempio, si può arricchire con lo stormire della vegetazione e il cinguettare degli uccelli. Le figure maschili e femminili in abiti settecenteschi che passeggiano, conversano o si riposano all'ombra degli alberi sono accompagnate da chiacchiericcio e fruscio di stoffe. L’utilizzo di un’audioguida digitale di questo tipo permette lo sviluppo di molte funzionalità aggiuntive. Si può, per esempio, prevedere la funzione multilingua, o pianificare diversi livelli di “esperienza”, adattando il modo in cui viene trasmesso il contenuto al livello di conoscenza del singolo utente. Questo consentirebbe l’aggiunta di contenuti specifici per un determinato tipo di pubblico: per un pubblico infantile, per esempio, oltre a prevedere una spiegazione adatta all’età, permetterebbe l’inserimento di attività specifiche e piccoli giochi, per mantenere alta l’attenzione della fascia di pubblico più facilmente distraibile. Per passare al prossimo quadro, è sufficiente scansionare il codice QR seguente.\n",
+  "words": [
+    {
+      "word": "Ciao,",
+      "start": 0.0,
+      "end": 0.2814678899082569
+    },
+    {
+      "word": "questo",
+      "start": 0.2814678899082569,
+      "end": 0.5629357798165138
+    },
+    {
+      "word": "è",
+      "start": 0.5629357798165138,
+      "end": 0.8444036697247707
+    },
+    {
+      "word": "un",
+      "start": 0.8444036697247707,
+      "end": 1.1258715596330275
+    },
+    {
+      "word": "prototipo",
+      "start": 1.1258715596330275,
+      "end": 1.4073394495412845
+    },
+    {
+      "word": "di",
+      "start": 1.4073394495412845,
+      "end": 1.6888073394495413
+    },
+    {
+      "word": "audioguida.",
+      "start": 1.6888073394495413,
+      "end": 1.970275229357798
+    },
+    {
+      "word": "Inquadrando",
+      "start": 1.970275229357798,
+      "end": 2.251743119266055
+    },
+    {
+      "word": "il",
+      "start": 2.251743119266055,
+      "end": 2.533211009174312
+    },
+    {
+      "word": "codice",
+      "start": 2.533211009174312,
+      "end": 2.814678899082569
+    },
+    {
+      "word": "QR",
+      "start": 2.814678899082569,
+      "end": 3.0961467889908256
+    },
+    {
+      "word": "al",
+      "start": 3.0961467889908256,
+      "end": 3.3776146788990826
+    },
+    {
+      "word": "di",
+      "start": 3.3776146788990826,
+      "end": 3.6590825688073396
+    },
+    {
+      "word": "sotto",
+      "start": 3.6590825688073396,
+      "end": 3.940550458715596
+    },
+    {
+      "word": "del",
+      "start": 3.940550458715596,
+      "end": 4.222018348623854
+    },
+    {
+      "word": "quadro,",
+      "start": 4.222018348623854,
+      "end": 4.50348623853211
+    },
+    {
+      "word": "senza",
+      "start": 4.50348623853211,
+      "end": 4.784954128440367
+    },
+    {
+      "word": "bisogno",
+      "start": 4.784954128440367,
+      "end": 5.066422018348624
+    },
+    {
+      "word": "di",
+      "start": 5.066422018348624,
+      "end": 5.347889908256881
+    },
+    {
+      "word": "alcuna",
+      "start": 5.347889908256881,
+      "end": 5.629357798165138
+    },
+    {
+      "word": "installazione,",
+      "start": 5.629357798165138,
+      "end": 5.910825688073395
+    },
+    {
+      "word": "si",
+      "start": 5.910825688073395,
+      "end": 6.192293577981651
+    },
+    {
+      "word": "aprerà",
+      "start": 6.192293577981651,
+      "end": 6.473761467889909
+    },
+    {
+      "word": "automaticamente",
+      "start": 6.473761467889909,
+      "end": 6.755229357798165
+    },
+    {
+      "word": "questa",
+      "start": 6.755229357798165,
+      "end": 7.036697247706422
+    },
+    {
+      "word": "guida,",
+      "start": 7.036697247706422,
+      "end": 7.318165137614679
+    },
+    {
+      "word": "da",
+      "start": 7.318165137614679,
+      "end": 7.599633027522936
+    },
+    {
+      "word": "ascoltare",
+      "start": 7.599633027522936,
+      "end": 7.881100917431192
+    },
+    {
+      "word": "con",
+      "start": 7.881100917431192,
+      "end": 8.162568807339449
+    },
+    {
+      "word": "le",
+      "start": 8.162568807339449,
+      "end": 8.444036697247707
+    },
+    {
+      "word": "tue",
+      "start": 8.444036697247707,
+      "end": 8.725504587155964
+    },
+    {
+      "word": "cuffie",
+      "start": 8.725504587155964,
+      "end": 9.00697247706422
+    },
+    {
+      "word": "o",
+      "start": 9.00697247706422,
+      "end": 9.288440366972477
+    },
+    {
+      "word": "con",
+      "start": 9.288440366972477,
+      "end": 9.569908256880733
+    },
+    {
+      "word": "quelle",
+      "start": 9.569908256880733,
+      "end": 9.851376146788992
+    },
+    {
+      "word": "che",
+      "start": 9.851376146788992,
+      "end": 10.132844036697248
+    },
+    {
+      "word": "ti",
+      "start": 10.132844036697248,
+      "end": 10.414311926605505
+    },
+    {
+      "word": "verranno",
+      "start": 10.414311926605505,
+      "end": 10.695779816513761
+    },
+    {
+      "word": "date",
+      "start": 10.695779816513761,
+      "end": 10.977247706422018
+    },
+    {
+      "word": "in",
+      "start": 10.977247706422018,
+      "end": 11.258715596330276
+    },
+    {
+      "word": "dotazione",
+      "start": 11.258715596330276,
+      "end": 11.540183486238533
+    },
+    {
+      "word": "dal",
+      "start": 11.540183486238533,
+      "end": 11.82165137614679
+    },
+    {
+      "word": "museo.",
+      "start": 11.82165137614679,
+      "end": 12.103119266055046
+    },
+    {
+      "word": "Nella",
+      "start": 12.103119266055046,
+      "end": 12.384587155963303
+    },
+    {
+      "word": "parte",
+      "start": 12.384587155963303,
+      "end": 12.666055045871559
+    },
+    {
+      "word": "superiore",
+      "start": 12.666055045871559,
+      "end": 12.947522935779817
+    },
+    {
+      "word": "dello",
+      "start": 12.947522935779817,
+      "end": 13.228990825688074
+    },
+    {
+      "word": "schermo",
+      "start": 13.228990825688074,
+      "end": 13.51045871559633
+    },
+    {
+      "word": "comparirà",
+      "start": 13.51045871559633,
+      "end": 13.791926605504587
+    },
+    {
+      "word": "una",
+      "start": 13.791926605504587,
+      "end": 14.073394495412844
+    },
+    {
+      "word": "piccola",
+      "start": 14.073394495412844,
+      "end": 14.354862385321102
+    },
+    {
+      "word": "riproduzione",
+      "start": 14.354862385321102,
+      "end": 14.636330275229358
+    },
+    {
+      "word": "del",
+      "start": 14.636330275229358,
+      "end": 14.917798165137615
+    },
+    {
+      "word": "quadro",
+      "start": 14.917798165137615,
+      "end": 15.199266055045872
+    },
+    {
+      "word": "in",
+      "start": 15.199266055045872,
+      "end": 15.480733944954128
+    },
+    {
+      "word": "considerazione,",
+      "start": 15.480733944954128,
+      "end": 15.762201834862385
+    },
+    {
+      "word": "in",
+      "start": 15.762201834862385,
+      "end": 16.04366972477064
+    },
+    {
+      "word": "questo",
+      "start": 16.04366972477064,
+      "end": 16.325137614678898
+    },
+    {
+      "word": "caso",
+      "start": 16.325137614678898,
+      "end": 16.606605504587158
+    },
+    {
+      "word": "“Il",
+      "start": 16.606605504587158,
+      "end": 16.888073394495414
+    },
+    {
+      "word": "Giardino",
+      "start": 16.888073394495414,
+      "end": 17.16954128440367
+    },
+    {
+      "word": "Ducale",
+      "start": 17.16954128440367,
+      "end": 17.451009174311928
+    },
+    {
+      "word": "alla",
+      "start": 17.451009174311928,
+      "end": 17.732477064220184
+    },
+    {
+      "word": "metà",
+      "start": 17.732477064220184,
+      "end": 18.01394495412844
+    },
+    {
+      "word": "del",
+      "start": 18.01394495412844,
+      "end": 18.295412844036697
+    },
+    {
+      "word": "secolo",
+      "start": 18.295412844036697,
+      "end": 18.576880733944954
+    },
+    {
+      "word": "XVIII”",
+      "start": 18.576880733944954,
+      "end": 18.85834862385321
+    },
+    {
+      "word": "di",
+      "start": 18.85834862385321,
+      "end": 19.139816513761467
+    },
+    {
+      "word": "Guido",
+      "start": 19.139816513761467,
+      "end": 19.421284403669723
+    },
+    {
+      "word": "Carmignani,",
+      "start": 19.421284403669723,
+      "end": 19.702752293577984
+    },
+    {
+      "word": "come",
+      "start": 19.702752293577984,
+      "end": 19.98422018348624
+    },
+    {
+      "word": "indicato.",
+      "start": 19.98422018348624,
+      "end": 20.265688073394497
+    },
+    {
+      "word": "L’immagine",
+      "start": 20.265688073394497,
+      "end": 20.547155963302753
+    },
+    {
+      "word": "è",
+      "start": 20.547155963302753,
+      "end": 20.82862385321101
+    },
+    {
+      "word": "piccola",
+      "start": 20.82862385321101,
+      "end": 21.110091743119266
+    },
+    {
+      "word": "e",
+      "start": 21.110091743119266,
+      "end": 21.391559633027523
+    },
+    {
+      "word": "discreta",
+      "start": 21.391559633027523,
+      "end": 21.67302752293578
+    },
+    {
+      "word": "per",
+      "start": 21.67302752293578,
+      "end": 21.954495412844036
+    },
+    {
+      "word": "non",
+      "start": 21.954495412844036,
+      "end": 22.235963302752292
+    },
+    {
+      "word": "distogliere",
+      "start": 22.235963302752292,
+      "end": 22.517431192660553
+    },
+    {
+      "word": "l’attenzione",
+      "start": 22.517431192660553,
+      "end": 22.79889908256881
+    },
+    {
+      "word": "dello",
+      "start": 22.79889908256881,
+      "end": 23.080366972477066
+    },
+    {
+      "word": "spettatore",
+      "start": 23.080366972477066,
+      "end": 23.361834862385322
+    },
+    {
+      "word": "dal",
+      "start": 23.361834862385322,
+      "end": 23.64330275229358
+    },
+    {
+      "word": "quadro",
+      "start": 23.64330275229358,
+      "end": 23.924770642201835
+    },
+    {
+      "word": "reale:",
+      "start": 23.924770642201835,
+      "end": 24.206238532110092
+    },
+    {
+      "word": "il",
+      "start": 24.206238532110092,
+      "end": 24.48770642201835
+    },
+    {
+      "word": "suo",
+      "start": 24.48770642201835,
+      "end": 24.769174311926605
+    },
+    {
+      "word": "scopo",
+      "start": 24.769174311926605,
+      "end": 25.05064220183486
+    },
+    {
+      "word": "è",
+      "start": 25.05064220183486,
+      "end": 25.332110091743118
+    },
+    {
+      "word": "principalmente",
+      "start": 25.332110091743118,
+      "end": 25.61357798165138
+    },
+    {
+      "word": "quello",
+      "start": 25.61357798165138,
+      "end": 25.895045871559635
+    },
+    {
+      "word": "di",
+      "start": 25.895045871559635,
+      "end": 26.17651376146789
+    },
+    {
+      "word": "confermare",
+      "start": 26.17651376146789,
+      "end": 26.457981651376148
+    },
+    {
+      "word": "che",
+      "start": 26.457981651376148,
+      "end": 26.739449541284404
+    },
+    {
+      "word": "sì,",
+      "start": 26.739449541284404,
+      "end": 27.02091743119266
+    },
+    {
+      "word": "è",
+      "start": 27.02091743119266,
+      "end": 27.302385321100918
+    },
+    {
+      "word": "effettivamente",
+      "start": 27.302385321100918,
+      "end": 27.583853211009174
+    },
+    {
+      "word": "quello",
+      "start": 27.583853211009174,
+      "end": 27.86532110091743
+    },
+    {
+      "word": "il",
+      "start": 27.86532110091743,
+      "end": 28.146788990825687
+    },
+    {
+      "word": "quadro",
+      "start": 28.146788990825687,
+      "end": 28.428256880733944
+    },
+    {
+      "word": "di",
+      "start": 28.428256880733944,
+      "end": 28.709724770642204
+    },
+    {
+      "word": "cui",
+      "start": 28.709724770642204,
+      "end": 28.99119266055046
+    },
+    {
+      "word": "stiamo",
+      "start": 28.99119266055046,
+      "end": 29.272660550458717
+    },
+    {
+      "word": "parlando,",
+      "start": 29.272660550458717,
+      "end": 29.554128440366974
+    },
+    {
+      "word": "e",
+      "start": 29.554128440366974,
+      "end": 29.83559633027523
+    },
+    {
+      "word": "di",
+      "start": 29.83559633027523,
+      "end": 30.117064220183487
+    },
+    {
+      "word": "evidenziare",
+      "start": 30.117064220183487,
+      "end": 30.398532110091743
+    },
+    {
+      "word": "alcuni",
+      "start": 30.398532110091743,
+      "end": 30.68
+    },
+    {
+      "word": "dettagli",
+      "start": 30.68,
+      "end": 31.24
+    },
+    {
+      "word": "specifici",
+      "start": 31.24,
+      "end": 31.34
+    },
+    {
+      "word": "su",
+      "start": 31.24,
+      "end": 31.46
+    },
+    {
+      "word": "cui",
+      "start": 31.46,
+      "end": 31.54
+    },
+    {
+      "word": "la",
+      "start": 31.54,
+      "end": 31.7
+    },
+    {
+      "word": "guida",
+      "start": 31.7,
+      "end": 31.86
+    },
+    {
+      "word": "richiama",
+      "start": 31.86,
+      "end": 32.16
+    },
+    {
+      "word": "l’attenzione.",
+      "start": 32.16,
+      "end": 33.04
+    },
+    {
+      "word": "Il",
+      "start": 33.38,
+      "end": 33.52
+    },
+    {
+      "word": "grande",
+      "start": 33.52,
+      "end": 33.55777777777778
+    },
+    {
+      "word": "vaso",
+      "start": 33.55777777777778,
+      "end": 33.595555555555556
+    },
+    {
+      "word": "di",
+      "start": 33.595555555555556,
+      "end": 33.63333333333333
+    },
+    {
+      "word": "Jean",
+      "start": 33.63333333333333,
+      "end": 33.67111111111111
+    },
+    {
+      "word": "Baptiste",
+      "start": 33.67111111111111,
+      "end": 33.70888888888889
+    },
+    {
+      "word": "Boudard,",
+      "start": 33.70888888888889,
+      "end": 33.74666666666667
+    },
+    {
+      "word": "per",
+      "start": 33.74666666666667,
+      "end": 33.784444444444446
+    },
+    {
+      "word": "esempio.",
+      "start": 33.784444444444446,
+      "end": 33.82222222222222
+    },
+    {
+      "word": "L’interfaccia",
+      "start": 33.82222222222222,
+      "end": 33.86
+    },
+    {
+      "word": "alla",
+      "start": 33.86,
+      "end": 34.02
+    },
+    {
+      "word": "base",
+      "start": 34.02,
+      "end": 34.34
+    },
+    {
+      "word": "dello",
+      "start": 34.34,
+      "end": 34.64
+    },
+    {
+      "word": "schermo",
+      "start": 34.64,
+      "end": 35.04
+    },
+    {
+      "word": "è",
+      "start": 35.04,
+      "end": 35.0875
+    },
+    {
+      "word": "semplice",
+      "start": 35.0875,
+      "end": 35.135
+    },
+    {
+      "word": "e",
+      "start": 35.135,
+      "end": 35.1825
+    },
+    {
+      "word": "immediata.",
+      "start": 35.1825,
+      "end": 35.23
+    },
+    {
+      "word": "Permette",
+      "start": 35.23,
+      "end": 35.277499999999996
+    },
+    {
+      "word": "di",
+      "start": 35.277499999999996,
+      "end": 35.325
+    },
+    {
+      "word": "interrompere",
+      "start": 35.325,
+      "end": 35.3725
+    },
+    {
+      "word": "la",
+      "start": 35.3725,
+      "end": 35.42
+    },
+    {
+      "word": "riproduzione",
+      "start": 35.42,
+      "end": 35.4675
+    },
+    {
+      "word": "e",
+      "start": 35.4675,
+      "end": 35.515
+    },
+    {
+      "word": "di",
+      "start": 35.515,
+      "end": 35.5625
+    },
+    {
+      "word": "farla",
+      "start": 35.5625,
+      "end": 35.61
+    },
+    {
+      "word": "ripartire,",
+      "start": 35.61,
+      "end": 35.6575
+    },
+    {
+      "word": "di",
+      "start": 35.6575,
+      "end": 35.705
+    },
+    {
+      "word": "avanzare",
+      "start": 35.705,
+      "end": 35.7525
+    },
+    {
+      "word": "e",
+      "start": 35.7525,
+      "end": 35.8
+    },
+    {
+      "word": "retrocedere",
+      "start": 35.8,
+      "end": 35.8475
+    },
+    {
+      "word": "nella",
+      "start": 35.8475,
+      "end": 35.894999999999996
+    },
+    {
+      "word": "guida,",
+      "start": 35.894999999999996,
+      "end": 35.9425
+    },
+    {
+      "word": "e",
+      "start": 35.9425,
+      "end": 35.99
+    },
+    {
+      "word": "di",
+      "start": 35.99,
+      "end": 36.0375
+    },
+    {
+      "word": "attivare",
+      "start": 36.0375,
+      "end": 36.085
+    },
+    {
+      "word": "e",
+      "start": 36.085,
+      "end": 36.1325
+    },
+    {
+      "word": "disattivare",
+      "start": 36.1325,
+      "end": 36.18
+    },
+    {
+      "word": "i",
+      "start": 36.18,
+      "end": 36.46
+    },
+    {
+      "word": "sottotitoli.",
+      "start": 36.46,
+      "end": 37.2
+    },
+    {
+      "word": "Il",
+      "start": 37.6,
+      "end": 40.04666666666667
+    },
+    {
+      "word": "testo",
+      "start": 40.04666666666667,
+      "end": 42.49333333333333
+    },
+    {
+      "word": "può",
+      "start": 42.49333333333333,
+      "end": 44.94
+    },
+    {
+      "word": "essere",
+      "start": 44.94,
+      "end": 45.18
+    },
+    {
+      "word": "suddiviso",
+      "start": 45.18,
+      "end": 45.42
+    },
+    {
+      "word": "in",
+      "start": 45.42,
+      "end": 45.66
+    },
+    {
+      "word": "capitoli,",
+      "start": 45.66,
+      "end": 46.04
+    },
+    {
+      "word": "selezionabili",
+      "start": 46.04,
+      "end": 47.36666666666667
+    },
+    {
+      "word": "individualmente.",
+      "start": 47.36666666666667,
+      "end": 48.693333333333335
+    },
+    {
+      "word": "Questo",
+      "start": 48.693333333333335,
+      "end": 50.02
+    },
+    {
+      "word": "permette",
+      "start": 50.02,
+      "end": 50.36
+    },
+    {
+      "word": "di",
+      "start": 50.36,
+      "end": 50.52
+    },
+    {
+      "word": "organizzare",
+      "start": 50.52,
+      "end": 50.88
+    },
+    {
+      "word": "il",
+      "start": 50.88,
+      "end": 51.08
+    },
+    {
+      "word": "contenuto",
+      "start": 51.08,
+      "end": 51.36
+    },
+    {
+      "word": "tematicamente,",
+      "start": 51.36,
+      "end": 52.12
+    },
+    {
+      "word": "approfondendo",
+      "start": 52.42,
+      "end": 52.86
+    },
+    {
+      "word": "il",
+      "start": 52.86,
+      "end": 52.98
+    },
+    {
+      "word": "periodo",
+      "start": 52.98,
+      "end": 53.34
+    },
+    {
+      "word": "storico,",
+      "start": 53.34,
+      "end": 53.72
+    },
+    {
+      "word": "la",
+      "start": 53.88,
+      "end": 53.96
+    },
+    {
+      "word": "corrente",
+      "start": 53.96,
+      "end": 54.22
+    },
+    {
+      "word": "artistica",
+      "start": 54.22,
+      "end": 54.62
+    },
+    {
+      "word": "di",
+      "start": 54.62,
+      "end": 54.76
+    },
+    {
+      "word": "riferimento,",
+      "start": 54.76,
+      "end": 55.32
+    },
+    {
+      "word": "o",
+      "start": 55.32,
+      "end": 55.52
+    },
+    {
+      "word": "la",
+      "start": 55.52,
+      "end": 55.800000000000004
+    },
+    {
+      "word": "vita",
+      "start": 55.8,
+      "end": 56.18
+    },
+    {
+      "word": "dell’autore,",
+      "start": 56.18,
+      "end": 56.56
+    },
+    {
+      "word": "oltre",
+      "start": 56.56,
+      "end": 56.96
+    },
+    {
+      "word": "alla",
+      "start": 56.96,
+      "end": 57.06
+    },
+    {
+      "word": "descrizione",
+      "start": 57.06,
+      "end": 57.52
+    },
+    {
+      "word": "dell’opera.",
+      "start": 57.52,
+      "end": 58.56
+    },
+    {
+      "word": "Questa",
+      "start": 58.7,
+      "end": 58.84
+    },
+    {
+      "word": "può",
+      "start": 58.84,
+      "end": 58.98
+    },
+    {
+      "word": "essere",
+      "start": 58.98,
+      "end": 59.18
+    },
+    {
+      "word": "accompagnata",
+      "start": 59.18,
+      "end": 59.76
+    },
+    {
+      "word": "da",
+      "start": 59.76,
+      "end": 59.88
+    },
+    {
+      "word": "una",
+      "start": 59.88,
+      "end": 60.02
+    },
+    {
+      "word": "sonorizzazione,",
+      "start": 60.02,
+      "end": 61.04
+    },
+    {
+      "word": "aumentando",
+      "start": 61.04,
+      "end": 61.46
+    },
+    {
+      "word": "notevolmente",
+      "start": 61.46,
+      "end": 61.98
+    },
+    {
+      "word": "l’immersività.",
+      "start": 61.98,
+      "end": 62.64
+    },
+    {
+      "word": "Una",
+      "start": 63.62,
+      "end": 63.72
+    },
+    {
+      "word": "scena",
+      "start": 63.72,
+      "end": 63.92
+    },
+    {
+      "word": "di",
+      "start": 63.92,
+      "end": 64.16
+    },
+    {
+      "word": "genere",
+      "start": 64.16,
+      "end": 64.34
+    },
+    {
+      "word": "ambientata",
+      "start": 64.34,
+      "end": 64.76
+    },
+    {
+      "word": "in",
+      "start": 64.76,
+      "end": 64.86
+    },
+    {
+      "word": "un",
+      "start": 64.86,
+      "end": 64.98
+    },
+    {
+      "word": "parco",
+      "start": 64.98,
+      "end": 65.18
+    },
+    {
+      "word": "cittadino,",
+      "start": 65.18,
+      "end": 65.72
+    },
+    {
+      "word": "per",
+      "start": 65.78,
+      "end": 65.92
+    },
+    {
+      "word": "esempio,",
+      "start": 65.92,
+      "end": 66.3
+    },
+    {
+      "word": "si",
+      "start": 66.44,
+      "end": 66.56
+    },
+    {
+      "word": "può",
+      "start": 66.56,
+      "end": 66.7
+    },
+    {
+      "word": "arricchire",
+      "start": 66.7,
+      "end": 67.04
+    },
+    {
+      "word": "con",
+      "start": 67.04,
+      "end": 67.18
+    },
+    {
+      "word": "lo",
+      "start": 67.18,
+      "end": 67.38
+    },
+    {
+      "word": "stormire",
+      "start": 67.38,
+      "end": 67.74
+    },
+    {
+      "word": "della",
+      "start": 67.74,
+      "end": 67.92
+    },
+    {
+      "word": "vegetazione",
+      "start": 67.92,
+      "end": 68.66
+    },
+    {
+      "word": "e",
+      "start": 68.8,
+      "end": 68.895
+    },
+    {
+      "word": "il",
+      "start": 68.895,
+      "end": 68.99000000000001
+    },
+    {
+      "word": "cinguettare",
+      "start": 68.99000000000001,
+      "end": 69.08500000000001
+    },
+    {
+      "word": "degli",
+      "start": 69.08500000000001,
+      "end": 69.18
+    },
+    {
+      "word": "uccelli.",
+      "start": 69.18,
+      "end": 70.24
+    },
+    {
+      "word": "Le",
+      "start": 70.4,
+      "end": 70.54
+    },
+    {
+      "word": "figure",
+      "start": 70.54,
+      "end": 70.76
+    },
+    {
+      "word": "maschili",
+      "start": 70.76,
+      "end": 71.16
+    },
+    {
+      "word": "e",
+      "start": 71.16,
+      "end": 71.3
+    },
+    {
+      "word": "femminili",
+      "start": 71.3,
+      "end": 71.72
+    },
+    {
+      "word": "in",
+      "start": 71.72,
+      "end": 71.88
+    },
+    {
+      "word": "abiti",
+      "start": 71.88,
+      "end": 72.1
+    },
+    {
+      "word": "settecenteschi",
+      "start": 72.1,
+      "end": 72.82
+    },
+    {
+      "word": "che",
+      "start": 72.82,
+      "end": 73.0
+    },
+    {
+      "word": "passeggiano,",
+      "start": 73.0,
+      "end": 73.6
+    },
+    {
+      "word": "conversano",
+      "start": 73.88,
+      "end": 74.32
+    },
+    {
+      "word": "o",
+      "start": 74.32,
+      "end": 74.46
+    },
+    {
+      "word": "si",
+      "start": 74.46,
+      "end": 74.66
+    },
+    {
+      "word": "riposano",
+      "start": 74.66,
+      "end": 75.04
+    },
+    {
+      "word": "all'ombra",
+      "start": 75.04,
+      "end": 75.38
+    },
+    {
+      "word": "degli",
+      "start": 75.38,
+      "end": 75.68
+    },
+    {
+      "word": "alberi",
+      "start": 75.68,
+      "end": 76.02
+    },
+    {
+      "word": "sono",
+      "start": 76.02,
+      "end": 76.34666666666666
+    },
+    {
+      "word": "accompagnate",
+      "start": 76.34666666666666,
+      "end": 76.67333333333333
+    },
+    {
+      "word": "da",
+      "start": 76.67333333333333,
+      "end": 77.0
+    },
+    {
+      "word": "chiacchiericcio",
+      "start": 77.0,
+      "end": 77.62
+    },
+    {
+      "word": "e",
+      "start": 77.62,
+      "end": 77.76
+    },
+    {
+      "word": "fruscio",
+      "start": 77.76,
+      "end": 78.09
+    },
+    {
+      "word": "di",
+      "start": 78.09,
+      "end": 78.42
+    },
+    {
+      "word": "stoffe.",
+      "start": 78.42,
+      "end": 79.1
+    },
+    {
+      "word": "L’utilizzo",
+      "start": 79.3,
+      "end": 79.7
+    },
+    {
+      "word": "di",
+      "start": 79.7,
+      "end": 79.84
+    },
+    {
+      "word": "un’audioguida",
+      "start": 79.84,
+      "end": 80.36
+    },
+    {
+      "word": "digitale",
+      "start": 80.36,
+      "end": 80.8
+    },
+    {
+      "word": "di",
+      "start": 80.8,
+      "end": 81.04
+    },
+    {
+      "word": "questo",
+      "start": 81.04,
+      "end": 81.24
+    },
+    {
+      "word": "tipo",
+      "start": 81.24,
+      "end": 81.56
+    },
+    {
+      "word": "permette",
+      "start": 81.56,
+      "end": 82.02
+    },
+    {
+      "word": "lo",
+      "start": 82.02,
+      "end": 82.16
+    },
+    {
+      "word": "sviluppo",
+      "start": 82.16,
+      "end": 82.48
+    },
+    {
+      "word": "di",
+      "start": 82.48,
+      "end": 82.62
+    },
+    {
+      "word": "molte",
+      "start": 82.62,
+      "end": 82.72
+    },
+    {
+      "word": "funzionalità",
+      "start": 82.62,
+      "end": 83.34
+    },
+    {
+      "word": "aggiuntive.",
+      "start": 83.34,
+      "end": 83.94
+    },
+    {
+      "word": "Si",
+      "start": 84.38,
+      "end": 84.54
+    },
+    {
+      "word": "può,",
+      "start": 84.54,
+      "end": 84.74
+    },
+    {
+      "word": "per",
+      "start": 84.76,
+      "end": 84.96
+    },
+    {
+      "word": "esempio,",
+      "start": 84.96,
+      "end": 85.34
+    },
+    {
+      "word": "prevedere",
+      "start": 85.5,
+      "end": 85.78
+    },
+    {
+      "word": "la",
+      "start": 85.78,
+      "end": 85.94
+    },
+    {
+      "word": "funzione",
+      "start": 85.94,
+      "end": 86.2
+    },
+    {
+      "word": "multilingua,",
+      "start": 86.2,
+      "end": 86.86
+    },
+    {
+      "word": "o",
+      "start": 86.86,
+      "end": 87.48
+    },
+    {
+      "word": "pianificare",
+      "start": 87.48,
+      "end": 88.14
+    },
+    {
+      "word": "diversi",
+      "start": 88.14,
+      "end": 88.56
+    },
+    {
+      "word": "livelli",
+      "start": 88.56,
+      "end": 88.78
+    },
+    {
+      "word": "di",
+      "start": 88.78,
+      "end": 89.02
+    },
+    {
+      "word": "“esperienza”,",
+      "start": 89.02,
+      "end": 89.86
+    },
+    {
+      "word": "adattando",
+      "start": 90.08,
+      "end": 90.5
+    },
+    {
+      "word": "il",
+      "start": 90.5,
+      "end": 90.56
+    },
+    {
+      "word": "modo",
+      "start": 90.56,
+      "end": 90.72
+    },
+    {
+      "word": "in",
+      "start": 90.72,
+      "end": 90.84
+    },
+    {
+      "word": "cui",
+      "start": 90.84,
+      "end": 90.92
+    },
+    {
+      "word": "viene",
+      "start": 90.92,
+      "end": 91.12
+    },
+    {
+      "word": "trasmesso",
+      "start": 91.12,
+      "end": 91.46
+    },
+    {
+      "word": "il",
+      "start": 91.46,
+      "end": 91.76
+    },
+    {
+      "word": "contenuto",
+      "start": 91.76,
+      "end": 92.1
+    },
+    {
+      "word": "al",
+      "start": 92.1,
+      "end": 92.22
+    },
+    {
+      "word": "livello",
+      "start": 92.22,
+      "end": 92.42
+    },
+    {
+      "word": "di",
+      "start": 92.42,
+      "end": 92.6
+    },
+    {
+      "word": "conoscenza",
+      "start": 92.6,
+      "end": 93.0
+    },
+    {
+      "word": "del",
+      "start": 93.0,
+      "end": 93.16
+    },
+    {
+      "word": "singolo",
+      "start": 93.16,
+      "end": 93.46
+    },
+    {
+      "word": "utente.",
+      "start": 93.46,
+      "end": 94.2
+    },
+    {
+      "word": "Questo",
+      "start": 94.5,
+      "end": 94.76
+    },
+    {
+      "word": "consentirebbe",
+      "start": 94.76,
+      "end": 95.4
+    },
+    {
+      "word": "l’aggiunta",
+      "start": 95.4,
+      "end": 95.78
+    },
+    {
+      "word": "di",
+      "start": 95.78,
+      "end": 95.98
+    },
+    {
+      "word": "contenuti",
+      "start": 95.98,
+      "end": 96.32
+    },
+    {
+      "word": "specifici",
+      "start": 96.32,
+      "end": 96.82
+    },
+    {
+      "word": "per",
+      "start": 96.82,
+      "end": 97.0
+    },
+    {
+      "word": "un",
+      "start": 97.0,
+      "end": 97.12
+    },
+    {
+      "word": "determinato",
+      "start": 97.12,
+      "end": 97.62
+    },
+    {
+      "word": "tipo",
+      "start": 97.62,
+      "end": 97.78
+    },
+    {
+      "word": "di",
+      "start": 97.78,
+      "end": 98.06
+    },
+    {
+      "word": "pubblico:",
+      "start": 98.06,
+      "end": 98.6
+    },
+    {
+      "word": "per",
+      "start": 98.76,
+      "end": 98.92
+    },
+    {
+      "word": "un",
+      "start": 98.92,
+      "end": 99.04
+    },
+    {
+      "word": "pubblico",
+      "start": 99.04,
+      "end": 99.36
+    },
+    {
+      "word": "infantile,",
+      "start": 99.36,
+      "end": 99.88
+    },
+    {
+      "word": "per",
+      "start": 100.06,
+      "end": 100.08
+    },
+    {
+      "word": "esempio,",
+      "start": 100.08,
+      "end": 100.5
+    },
+    {
+      "word": "oltre",
+      "start": 100.62,
+      "end": 100.88
+    },
+    {
+      "word": "a",
+      "start": 100.88,
+      "end": 100.98
+    },
+    {
+      "word": "prevedere",
+      "start": 100.98,
+      "end": 101.24
+    },
+    {
+      "word": "una",
+      "start": 101.24,
+      "end": 101.42
+    },
+    {
+      "word": "spiegazione",
+      "start": 101.42,
+      "end": 101.88
+    },
+    {
+      "word": "adatta",
+      "start": 101.88,
+      "end": 102.16
+    },
+    {
+      "word": "all’età,",
+      "start": 102.16,
+      "end": 102.82
+    },
+    {
+      "word": "permetterebbe",
+      "start": 103.0,
+      "end": 103.34
+    },
+    {
+      "word": "l’inserimento",
+      "start": 103.34,
+      "end": 103.82
+    },
+    {
+      "word": "di",
+      "start": 103.82,
+      "end": 103.96
+    },
+    {
+      "word": "attività",
+      "start": 103.96,
+      "end": 104.3
+    },
+    {
+      "word": "specifiche",
+      "start": 104.3,
+      "end": 104.78
+    },
+    {
+      "word": "e",
+      "start": 104.78,
+      "end": 104.98
+    },
+    {
+      "word": "piccoli",
+      "start": 104.98,
+      "end": 105.38
+    },
+    {
+      "word": "giochi,",
+      "start": 105.38,
+      "end": 105.88
+    },
+    {
+      "word": "per",
+      "start": 105.88,
+      "end": 106.12
+    },
+    {
+      "word": "mantenere",
+      "start": 106.12,
+      "end": 106.6
+    },
+    {
+      "word": "alta",
+      "start": 106.6,
+      "end": 106.82
+    },
+    {
+      "word": "l’attenzione",
+      "start": 106.82,
+      "end": 107.42
+    },
+    {
+      "word": "della",
+      "start": 107.42,
+      "end": 107.62
+    },
+    {
+      "word": "fascia",
+      "start": 107.62,
+      "end": 107.88
+    },
+    {
+      "word": "di",
+      "start": 107.88,
+      "end": 108.1
+    },
+    {
+      "word": "pubblico",
+      "start": 108.1,
+      "end": 108.4
+    },
+    {
+      "word": "più",
+      "start": 108.4,
+      "end": 108.58
+    },
+    {
+      "word": "facilmente",
+      "start": 108.58,
+      "end": 109.0
+    },
+    {
+      "word": "distraibile.",
+      "start": 109.0,
+      "end": 109.56
+    },
+    {
+      "word": "Per",
+      "start": 109.56,
+      "end": 110.3
+    },
+    {
+      "word": "passare",
+      "start": 110.3,
+      "end": 110.62
+    },
+    {
+      "word": "al",
+      "start": 110.62,
+      "end": 110.7
+    },
+    {
+      "word": "prossimo",
+      "start": 110.7,
+      "end": 111.04
+    },
+    {
+      "word": "quadro,",
+      "start": 111.04,
+      "end": 111.42
+    },
+    {
+      "word": "è",
+      "start": 111.48,
+      "end": 111.6
+    },
+    {
+      "word": "sufficiente",
+      "start": 111.6,
+      "end": 111.94
+    },
+    {
+      "word": "scansionare",
+      "start": 111.94,
+      "end": 112.46
+    },
+    {
+      "word": "il",
+      "start": 112.46,
+      "end": 112.54
+    },
+    {
+      "word": "codice",
+      "start": 112.54,
+      "end": 112.8
+    },
+    {
+      "word": "QR",
+      "start": 112.8,
+      "end": 113.08
+    },
+    {
+      "word": "seguente.",
+      "start": 113.08,
+      "end": 113.76
+    }
+  ]
+}
