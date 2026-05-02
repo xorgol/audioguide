@@ -31,6 +31,8 @@
         padding: 1rem;
         text-align: center;
         border-bottom: 1px solid #eee;
+        z-index: 10;
+        background: white;
       }
 
       main {
@@ -38,7 +40,7 @@
         display: flex;
         flex-direction: column;
         overflow-y: auto;
-        padding-bottom: 120px; /* Space for player */
+        min-height: 0; /* Important for flex children with overflow */
       }
 
       .image-container {
@@ -64,7 +66,6 @@
         padding: 1.5rem 2rem;
         font-size: 1.25rem;
         line-height: 1.6;
-        overflow-y: visible; /* Scroll is handled by main */
       }
 
       .word {
@@ -88,10 +89,7 @@
       }
 
       #player-container {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
+        flex: 0 0 auto;
         background: white;
         padding: 0.5rem 1rem;
         box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
@@ -101,16 +99,19 @@
       @media (min-width: 768px) {
         main {
           flex-direction: row;
+          overflow: hidden; /* Prevent main from scrolling, columns will scroll */
         }
         .image-container {
-          flex: 0 0 40%;
+          flex: 0 0 50%;
           max-height: none;
-          height: calc(100vh - 120px);
+          height: 100%;
+          padding: 2rem;
         }
         #transcript {
-          flex: 1 1 60%;
+          flex: 0 0 50%;
           overflow-y: auto;
-          height: calc(100vh - 120px);
+          height: 100%;
+          border-left: 1px solid #eee;
         }
       }
     </style>
