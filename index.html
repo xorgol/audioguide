@@ -14,6 +14,10 @@
         --dim-color: #888888;
       }
 
+      * {
+        box-sizing: border-box;
+      }
+
       body {
         margin: 0;
         padding: 0;
@@ -40,25 +44,56 @@
         display: flex;
         flex-direction: column;
         overflow-y: auto;
-        min-height: 0; /* Important for flex children with overflow */
+        min-height: 0;
       }
 
       .image-container {
         flex: 0 0 auto;
-        max-height: 40vh;
+        max-height: 45vh;
         display: flex;
         justify-content: center;
         align-items: center;
-        padding: 1rem;
+        padding: 0;
         background-color: #f9f9f9;
+        overflow: hidden;
       }
 
-      .image-container img {
+      #artwork-viewport {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+      }
+
+      #artwork-image {
         max-width: 100%;
         max-height: 100%;
         object-fit: contain;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        border-radius: 4px;
+        transition: transform 1.5s ease-in-out;
+        transform-origin: center;
+      }
+
+      #annotation-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 50;
+      }
+
+      .marker-pulse {
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0% { opacity: 0.4; stroke-width: 1; }
+        50% { opacity: 1; stroke-width: 3; }
+        100% { opacity: 0.4; stroke-width: 1; }
       }
 
       #transcript {
@@ -81,7 +116,6 @@
         color: var(--text-color);
       }
 
-      /* Base highlight style */
       .word.active {
         background-color: var(--highlight-color) !important;
         color: #000 !important;
@@ -96,42 +130,57 @@
         z-index: 1000;
       }
 
+      @media (max-width: 767px) {
+        .image-container {
+          position: sticky;
+          top: 0;
+          z-index: 100;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+          height: 40vh;
+        }
+      }
+
       @media (min-width: 768px) {
         main {
           flex-direction: row;
-          overflow: hidden; /* Prevent main from scrolling, columns will scroll */
+          flex-wrap: wrap;
+          overflow: hidden; 
+        }
+        header {
+          flex: 0 0 100%;
         }
         .image-container {
           flex: 0 0 50%;
           max-height: none;
-          height: 100%;
-          padding: 2rem;
+          height: calc(100% - 80px);
         }
         #transcript {
           flex: 0 0 50%;
           overflow-y: auto;
-          height: 100%;
+          height: calc(100% - 80px);
           border-left: 1px solid #eee;
         }
       }
     </style>
   </head>
   <body>
-    <header>
-      <h2 id="artwork-title">Il Giardino Ducale</h2>
-      <p id="artwork-artist" style="margin: 0; font-size: 0.9rem; color: #666;">Guido Carmignani (1878/1880)</p>
-    </header>
-
     <main>
+      <header>
+        <h2 id="artwork-title">Il Giardino Ducale</h2>
+        <p id="artwork-artist" style="margin: 0; font-size: 0.9rem; color: #666;">Guido Carmignani (1878/1880)</p>
+      </header>
+
       <div class="image-container">
-        <img src="carmignano.png" alt="Il Giardino Ducale alla metà del secolo XVIII" />
+        <div id="artwork-viewport">
+          <img id="artwork-image" src="carmignano.png" alt="Il Giardino Ducale alla metà del secolo XVIII" />
+          <svg id="annotation-layer" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+        </div>
       </div>
       <div id="transcript">
         <p style="font-size: 0.9rem; color: #999; margin-bottom: 1rem; font-style: italic;">
           Tocca una parola per saltare a quel punto dell'audio.
         </p>
         <div id="transcript-content">
-          <!-- Words will be dynamically loaded here for synchronization -->
           Caricamento trascrizione...
         </div>
       </div>
@@ -146,6 +195,9 @@
 
       document.addEventListener("DOMContentLoaded", async () => {
         const transcriptContent = document.getElementById('transcript-content');
+        const artworkImage = document.getElementById('artwork-image');
+        const annotationLayer = document.getElementById('annotation-layer');
+        let annotations = [];
 
         const player = new Player({
           container: () => document.querySelector("#player"),
@@ -161,12 +213,15 @@
         window.player = player;
 
         let lastActive = null;
+        let lastAnnotation = null;
+
+        const lerp = (a, b, t) => a + (b - a) * t;
 
         const updateHighlight = (currentTime) => {
           if (isNaN(currentTime)) return;
           
+          // 1. Sync Transcript
           const words = transcriptContent.querySelectorAll('.word');
-          
           for (let i = 0; i < words.length; i++) {
             const word = words[i];
             const start = parseFloat(word.dataset.start);
@@ -182,49 +237,121 @@
               break;
             }
           }
+
+          // 2. Sync Dynamic Annotations (Keyframes)
+          let activeState = null;
+          
+          for (const anno of annotations) {
+            const keys = anno.keyframes;
+            if (!keys || keys.length === 0) continue;
+            
+            const start = keys[0].time;
+            const end = keys[keys.length - 1].time;
+            
+            if (currentTime >= start && currentTime <= end) {
+              // Find the two keyframes we are between
+              let k1 = keys[0], k2 = keys[0];
+              for (let i = 0; i < keys.length - 1; i++) {
+                if (currentTime >= keys[i].time && currentTime <= keys[i+1].time) {
+                  k1 = keys[i];
+                  k2 = keys[i+1];
+                  break;
+                }
+              }
+              
+              const duration = k2.time - k1.time;
+              const alpha = duration > 0 ? (currentTime - k1.time) / duration : 1;
+              
+              activeState = {
+                type: anno.type,
+                color: anno.color,
+                thickness: anno.thickness,
+                x: lerp(k1.x, k2.x, alpha),
+                y: lerp(k1.y, k2.y, alpha),
+                zoom: lerp(k1.zoom, k2.zoom, alpha)
+              };
+              break;
+            }
+          }
+          
+          renderAnnotation(activeState);
         };
 
-        // BULLETPROOF POLLING: Use the player instance directly
+        const renderAnnotation = (state) => {
+          annotationLayer.innerHTML = '';
+          if (!state) {
+            artworkImage.style.transform = `scale(1) translate(0, 0)`;
+            return;
+          }
+
+          const zoom = state.zoom || 1;
+          const moveX = (50 - state.x) * zoom;
+          const moveY = (50 - state.y) * zoom;
+          artworkImage.style.transform = `scale(${zoom}) translate(${moveX}%, ${moveY}%)`;
+
+          const color = state.color || '#ffd700';
+          const thickness = state.thickness || 2;
+
+          if (state.type === 'circle') {
+            const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            circle.setAttribute("cx", state.x);
+            circle.setAttribute("cy", state.y);
+            circle.setAttribute("r", "5");
+            circle.setAttribute("fill", "none");
+            circle.setAttribute("stroke", color);
+            circle.setAttribute("stroke-width", thickness);
+            circle.classList.add('marker-pulse');
+            annotationLayer.appendChild(circle);
+          } else if (state.type === 'pointer') {
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            line.setAttribute("x1", state.x + 3);
+            line.setAttribute("y1", state.y + 3);
+            line.setAttribute("x2", state.x);
+            line.setAttribute("y2", state.y);
+            line.setAttribute("stroke", color);
+            line.setAttribute("stroke-width", thickness);
+            annotationLayer.appendChild(line);
+          }
+        };
+
+        // Increase polling frequency to 30fps for smooth animation
         setInterval(() => {
           if (window.player && !window.player.paused) {
             updateHighlight(window.player.currentTime);
           }
-        }, 100);
+        }, 33);
 
-        async function loadTranscript() {
+        async function init() {
           try {
-            const response = await fetch('timing.json');
-            if (!response.ok) throw new Error('Timing file not found');
-            const data = await response.json();
-            
-            transcriptContent.innerHTML = '';
-            const p = document.createElement('p');
-            data.words.forEach((item) => {
-              const span = document.createElement('span');
-              span.className = 'word';
-              span.dataset.start = item.start;
-              span.dataset.end = item.end;
-              
-              // Handle Italian apostrophes: don't add space if word ends in '
-              const text = item.word;
-              const hasApostrophe = text.endsWith("'") || text.endsWith("’");
-              span.textContent = text + (hasApostrophe ? '' : ' ');
-              
-              span.onclick = () => {
-                player.seek(item.start);
-                player.play();
-              };
-              
-              p.appendChild(span);
-            });
-            transcriptContent.appendChild(p);
+            const tResponse = await fetch('timing.json');
+            if (tResponse.ok) {
+              const data = await tResponse.json();
+              transcriptContent.innerHTML = '';
+              const p = document.createElement('p');
+              data.words.forEach((item) => {
+                const span = document.createElement('span');
+                span.className = 'word';
+                span.dataset.start = item.start;
+                span.dataset.end = item.end;
+                const text = item.word;
+                const hasApostrophe = text.endsWith("'") || text.endsWith("’");
+                span.textContent = text + (hasApostrophe ? '' : ' ');
+                span.onclick = () => { player.seek(item.start); player.play(); };
+                p.appendChild(span);
+              });
+              transcriptContent.appendChild(p);
+            }
+
+            const aResponse = await fetch('annotations.json');
+            if (aResponse.ok) {
+              annotations = await aResponse.json();
+            }
           } catch (e) {
-            console.error('Transcript Error:', e);
-            transcriptContent.innerHTML = `<p style="color: red;">Impossibile caricare la trascrizione sincronizzata.</p>`;
+            console.error('Init Error:', e);
           }
         }
 
-        loadTranscript();
+        init();
       });
     </script>
   </body>

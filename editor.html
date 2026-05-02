@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-MUSE | Annotation & Keyframe Editor</title>
+    <link rel="stylesheet" href="shinkwasa.css">
+    <style>
+        :root {
+            --primary: #954747;
+            --bg: #f5f5f5;
+            --panel: #ffffff;
+            --text: #333;
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #preview-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-right: 2px solid #ddd;
+            background: #000;
+        }
+
+        #viewport-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: crosshair;
+            touch-action: none; /* Crucial for dragging */
+        }
+
+        #artwork-image {
+            max-width: 100%;
+            max-height: 100%;
+            transition: transform 0.1s linear;
+            pointer-events: none; /* Let the container handle clicks/drags */
+        }
+
+        #annotation-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+        }
+
+        #player-container {
+            height: 100px;
+            background: #fff;
+            padding: 10px;
+        }
+
+        #control-pane {
+            width: 400px;
+            background: var(--panel);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        h2 { margin-top: 0; font-size: 1.2rem; color: var(--primary); }
+
+        .section {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #eee;
+        }
+
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.8rem; }
+        input, select { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.8rem; }
+        
+        .btn-group { display: flex; gap: 10px; margin-bottom: 10px; }
+        button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            background: #666;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button.primary { background: var(--primary); }
+        button:hover { opacity: 0.9; }
+
+        .keyframe-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: white;
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .keyframe-item.selected {
+            border-color: var(--primary);
+            background: #fff0f0;
+            box-shadow: 0 0 5px rgba(149, 71, 71, 0.3);
+        }
+
+        .kf-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            flex: 1;
+        }
+
+        .kf-grid div {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .kf-grid label {
+            font-size: 0.6rem;
+            margin: 0;
+            color: #888;
+        }
+
+        .kf-grid input {
+            margin: 0;
+            padding: 4px;
+        }
+
+        #export-area { margin-top: auto; }
+
+        .hint { font-size: 0.75rem; color: #888; font-style: italic; margin-bottom: 10px; }
+        ul.guide-list { font-size: 0.75rem; padding-left: 15px; color: #555; margin: 10px 0; }
+    </style>
+</head>
+<body>
+
+    <div id="preview-pane">
+        <div id="viewport-container">
+            <img id="artwork-image" src="carmignano.png">
+            <svg id="annotation-layer" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+        </div>
+        <div id="player-container">
+            <div id="player"></div>
+        </div>
+    </div>
+
+    <div id="control-pane">
+        <h2>Annotation Editor</h2>
+
+        <div class="section">
+            <h3>Quick Guide</h3>
+            <ul class="guide-list">
+                <li><b>Position</b>: Click or drag on the artwork.</li>
+                <li><b>Select</b>: Click a keyframe in the list to drag its specific position.</li>
+                <li><b>Add Keyframe</b>: Saves current time and visual state.</li>
+            </ul>
+        </div>
+        
+        <div class="section">
+            <label>Marker Type</label>
+            <select id="anno-type">
+                <option value="circle">Circle (Pulse)</option>
+                <option value="pointer">Pointer (Minimalist)</option>
+                <option value="none">Zoom Only</option>
+            </select>
+
+            <div class="btn-group">
+                <div style="flex:1">
+                    <label>Color</label>
+                    <input type="color" id="anno-color" value="#ffd700">
+                </div>
+                <div style="flex:1">
+                    <label>Thickness</label>
+                    <input type="number" id="anno-thickness" value="2" min="1" max="10">
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>Keyframes</h3>
+            <div id="keyframe-list"></div>
+            <button class="primary" id="add-keyframe" style="margin-top:10px">+ Add Keyframe at Current Time</button>
+        </div>
+
+        <div class="section" id="export-area">
+            <button id="export-json">Export annotations.json</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { Player } from "./shinkwasa.js";
+
+        let activeKeyframes = [];
+        let selectedIndex = -1;
+        let isDragging = false;
+
+        const img = document.getElementById('artwork-image');
+        const svg = document.getElementById('annotation-layer');
+        const kfList = document.getElementById('keyframe-list');
+        const viewport = document.getElementById('viewport-container');
+        
+        let nextX = 50, nextY = 50, nextZoom = 1.0;
+
+        const player = new Player({
+            container: () => document.querySelector("#player"),
+            audio: { src: "demo.mp3", title: "Editor Mode" }
+        });
+
+        // --- DRAG LOGIC ---
+        const handleMove = (e) => {
+            if (!isDragging) return;
+            const rect = viewport.getBoundingClientRect();
+            // Calculate coords relative to viewport
+            // Note: Since img uses object-fit: contain, we need to map to the image's actual bounds
+            // Simplification: we'll use the viewport center logic consistent with updatePreview
+            const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+            const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+            
+            if (selectedIndex >= 0) {
+                activeKeyframes[selectedIndex].x = parseFloat(x.toFixed(1));
+                activeKeyframes[selectedIndex].y = parseFloat(y.toFixed(1));
+                renderKeyframeList();
+            } else {
+                nextX = x;
+                nextY = y;
+            }
+            
+            const curZoom = selectedIndex >= 0 ? activeKeyframes[selectedIndex].zoom : nextZoom;
+            updatePreview(x, y, curZoom);
+        };
+
+        viewport.onpointerdown = (e) => {
+            isDragging = true;
+            viewport.setPointerCapture(e.pointerId);
+            handleMove(e);
+        };
+
+        viewport.onpointermove = handleMove;
+        
+        viewport.onpointerup = (e) => {
+            isDragging = false;
+            viewport.releasePointerCapture(e.pointerId);
+        };
+
+        document.getElementById('add-keyframe').onclick = () => {
+            const time = player.currentTime;
+            const kf = { 
+                time: parseFloat(time.toFixed(2)), 
+                x: parseFloat(nextX.toFixed(1)), 
+                y: parseFloat(nextY.toFixed(1)), 
+                zoom: 1.0 
+            };
+            
+            activeKeyframes.push(kf);
+            activeKeyframes.sort((a, b) => a.time - b.time);
+            selectedIndex = activeKeyframes.indexOf(kf);
+            renderKeyframeList();
+        };
+
+        function updatePreview(x, y, zoom) {
+            const moveX = (50 - x) * zoom;
+            const moveY = (50 - y) * zoom;
+            img.style.transform = `scale(${zoom}) translate(${moveX}%, ${moveY}%)`;
+            
+            svg.innerHTML = '';
+            const type = document.getElementById('anno-type').value;
+            const color = document.getElementById('anno-color').value;
+            const thickness = document.getElementById('anno-thickness').value;
+            
+            if (type !== 'none') {
+                const marker = type === 'circle' ? 
+                    document.createElementNS("http://www.w3.org/2000/svg", "circle") :
+                    document.createElementNS("http://www.w3.org/2000/svg", "line");
+                
+                if (type === 'circle') {
+                    marker.setAttribute("cx", x); marker.setAttribute("cy", y); marker.setAttribute("r", "5");
+                    marker.setAttribute("fill", "none");
+                } else {
+                    marker.setAttribute("x1", x + 3); marker.setAttribute("y1", y + 3);
+                    marker.setAttribute("x2", x); marker.setAttribute("y2", y);
+                }
+                
+                marker.setAttribute("stroke", color);
+                marker.setAttribute("stroke-width", thickness);
+                svg.appendChild(marker);
+            }
+        }
+
+        function renderKeyframeList() {
+            kfList.innerHTML = '';
+            activeKeyframes.forEach((kf, index) => {
+                const div = document.createElement('div');
+                div.className = `keyframe-item ${index === selectedIndex ? 'selected' : ''}`;
+                div.onclick = (e) => {
+                    if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
+                        selectedIndex = index;
+                        renderKeyframeList();
+                        updatePreview(kf.x, kf.y, kf.zoom);
+                    }
+                };
+                
+                div.innerHTML = `
+                    <div class="kf-grid">
+                        <div><label>Time(s)</label><input type="number" step="0.1" value="${kf.time}" onchange="window.updateKf(${index}, 'time', this.value)"></div>
+                        <div><label>Zoom</label><input type="number" step="0.1" value="${kf.zoom}" onchange="window.updateKf(${index}, 'zoom', this.value)"></div>
+                        <div><label>X%</label><input type="number" step="0.1" value="${kf.x}" onchange="window.updateKf(${index}, 'x', this.value)"></div>
+                        <div><label>Y%</label><input type="number" step="0.1" value="${kf.y}" onchange="window.updateKf(${index}, 'y', this.value)"></div>
+                    </div>
+                    <button style="flex:0; padding:5px 10px; background:#ff4747" onclick="window.removeKf(event, ${index})">×</button>
+                `;
+                kfList.appendChild(div);
+            });
+        }
+
+        window.updateKf = (idx, field, value) => {
+            activeKeyframes[idx][field] = parseFloat(value);
+            activeKeyframes.sort((a, b) => a.time - b.time);
+            renderKeyframeList();
+        };
+
+        window.removeKf = (e, idx) => {
+            e.stopPropagation();
+            activeKeyframes.splice(idx, 1);
+            if (selectedIndex === idx) selectedIndex = -1;
+            renderKeyframeList();
+        };
+
+        document.getElementById('export-json').onclick = () => {
+            if (activeKeyframes.length < 1) return alert("Add some keyframes first!");
+            const finalData = [{
+                type: document.getElementById('anno-type').value,
+                color: document.getElementById('anno-color').value,
+                thickness: parseInt(document.getElementById('anno-thickness').value),
+                keyframes: activeKeyframes
+            }];
+            const blob = new Blob([JSON.stringify(finalData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'annotations.json'; a.click();
+        };
+
+        const lerp = (a, b, t) => a + (b - a) * t;
+        setInterval(() => {
+            if (!player.paused && activeKeyframes.length > 1 && !isDragging) {
+                const t = player.currentTime;
+                let k1 = null, k2 = null;
+                for(let i=0; i<activeKeyframes.length-1; i++) {
+                    if (t >= activeKeyframes[i].time && t <= activeKeyframes[i+1].time) {
+                        k1 = activeKeyframes[i]; k2 = activeKeyframes[i+1]; break;
+                    }
+                }
+                if (k1 && k2) {
+                    const alpha = (t - k1.time) / (k2.time - k1.time);
+                    updatePreview(lerp(k1.x, k2.x, alpha), lerp(k1.y, k2.y, alpha), lerp(k1.zoom, k2.zoom, alpha));
+                }
+            }
+        }, 33);
+    </script>
+</body>
+</html>
