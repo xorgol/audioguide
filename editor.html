@@ -68,10 +68,13 @@
         #tl-time { font-family: ui-monospace, monospace; color: #ffd700; font-weight: bold; }
         .tl-zoom-wrap { display: flex; align-items: center; gap: 6px; }
         .tl-zoom-wrap input { width: 80px; margin: 0; padding: 0; min-height: auto; }
-        #timeline-body { display: flex; overflow: hidden; }
-        #tl-labels { flex: 0 0 54px; background: #202024; border-right: 1px solid #333; display: flex; flex-direction: column; z-index: 5; }
-        .tl-label { height: 26px; display: flex; align-items: center; justify-content: center; font-size: 0.62rem; font-weight: bold; letter-spacing: 0.04em; color: #a1a1aa; border-bottom: 1px solid #2e2e34; }
-        .tl-label.ruler-lbl { height: 20px; color: #71717a; }
+        #timeline-body { display: flex; max-height: 185px; overflow-y: auto; overflow-x: hidden; }
+        #tl-labels { flex: 0 0 74px; background: #202024; border-right: 1px solid #333; display: flex; flex-direction: column; z-index: 5; }
+        .tl-label { height: 26px; display: flex; align-items: center; gap: 4px; padding: 0 5px; font-size: 0.6rem; font-weight: bold; letter-spacing: 0.03em; color: #d4d4d8; border-bottom: 1px solid #2e2e34; cursor: ns-resize; touch-action: none; white-space: nowrap; overflow: hidden; }
+        .tl-label.ruler-lbl { height: 20px; color: #71717a; cursor: default; justify-content: center; }
+        .tl-label .tl-grip { color: #71717a; font-size: 0.7rem; }
+        .tl-label.drag-over { border-top: 2px solid #ffd700; background: #2c2c34; }
+        .tl-label.dragging { opacity: 0.5; background: #3f3f46; }
         #timeline-scroll { flex: 1; overflow-x: auto; overflow-y: hidden; position: relative; touch-action: pan-x; }
         #timeline-canvas { position: relative; min-width: 100%; }
         #tl-ruler { height: 20px; position: relative; background: #1f1f23; border-bottom: 1px solid #333; cursor: ew-resize; touch-action: none; }
@@ -133,18 +136,12 @@
             <div id="timeline-body">
                 <div id="tl-labels">
                     <div class="tl-label ruler-lbl">TIME</div>
-                    <div class="tl-label">MEDIA</div>
-                    <div class="tl-label">AUDIO</div>
-                    <div class="tl-label">TEXT</div>
-                    <div class="tl-label">FX</div>
+                    <div id="tl-labels-rows"></div>
                 </div>
                 <div id="timeline-scroll">
                     <div id="timeline-canvas">
                         <div id="tl-ruler"></div>
-                        <div id="tl-track-media" class="tl-lane"></div>
-                        <div id="tl-track-audio" class="tl-lane"></div>
-                        <div id="tl-track-text" class="tl-lane"></div>
-                        <div id="tl-track-fx" class="tl-lane"></div>
+                        <div id="tl-lanes"></div>
                         <div id="tl-playhead" style="left:0"></div>
                     </div>
                 </div>
@@ -302,7 +299,7 @@
         let activeMediaType = 'image';
 
         const bg = document.getElementById('artwork-image-bg'), fg = document.getElementById('artwork-image-fg'), bgVid = document.getElementById('artwork-video-bg'), fgVid = document.getElementById('artwork-video-fg'), model3d = document.getElementById('artwork-model-3d'), svg = document.getElementById('annotation-layer'), list = document.getElementById('keyframe-list'), viewport = document.getElementById('viewport-container'), stage = document.getElementById('artwork-stage'), textOverlay = document.getElementById('text-cue-overlay');
-        const tlCanvas = document.getElementById('timeline-canvas'), tlRuler = document.getElementById('tl-ruler'), tlMedia = document.getElementById('tl-track-media'), tlAudio = document.getElementById('tl-track-audio'), tlText = document.getElementById('tl-track-text'), tlFx = document.getElementById('tl-track-fx'), tlPlayhead = document.getElementById('tl-playhead'), tlTimeLbl = document.getElementById('tl-time'), tlZoomInp = document.getElementById('tl-zoom');
+        const tlCanvas = document.getElementById('timeline-canvas'), tlRuler = document.getElementById('tl-ruler'), tlLabelsRows = document.getElementById('tl-labels-rows'), tlLanes = document.getElementById('tl-lanes'), tlPlayhead = document.getElementById('tl-playhead'), tlTimeLbl = document.getElementById('tl-time'), tlZoomInp = document.getElementById('tl-zoom');
         let pxPerSec = parseFloat(tlZoomInp.value) || 14;
         let stageAspect = 1;
 
@@ -692,7 +689,7 @@
 
         function syncMediaAtTime(t, isPaused) {
             const matches = mediaCues.filter(c => t >= (c.start ?? 0) && t <= (c.end ?? Infinity));
-            const cue = matches.length > 0 ? matches[matches.length - 1] : null;
+            const cue = matches.length > 0 ? matches[0] : null;
             const key = cue ? `${cue.type}:${cue.src}:${cue.start}` : 'default';
             if (key !== activeCueKey) {
                 activeCueKey = key;
@@ -743,7 +740,7 @@
 
         function syncTextAtTime(t) {
             const active = textCues.filter(c => t >= (c.start ?? 0) && t <= (c.end ?? 0));
-            const cue = active.length > 0 ? active[active.length - 1] : null;
+            const cue = active.length > 0 ? active[0] : null;
             if (!cue || !cue.text) {
                 textOverlay.classList.add('hidden');
                 return;
@@ -1182,6 +1179,67 @@
             window.addEventListener('pointercancel', up);
         }
 
+        function attachTrackReorder(lblEl, kind, index, listArr) {
+            lblEl.dataset.kind = kind;
+            lblEl.dataset.index = index;
+            lblEl.onpointerdown = (e) => {
+                e.stopPropagation();
+                lblEl.classList.add('dragging');
+                let targetIdx = index;
+                const siblings = Array.from(tlLabelsRows.querySelectorAll(`.tl-label[data-kind="${kind}"]`));
+                const move = (ev) => {
+                    siblings.forEach(s => s.classList.remove('drag-over'));
+                    const hit = siblings.find(s => {
+                        const r = s.getBoundingClientRect();
+                        return ev.clientY >= r.top && ev.clientY <= r.bottom;
+                    });
+                    if (hit) {
+                        targetIdx = parseInt(hit.dataset.index, 10);
+                        if (targetIdx !== index) hit.classList.add('drag-over');
+                    }
+                };
+                const up = () => {
+                    window.removeEventListener('pointermove', move);
+                    window.removeEventListener('pointerup', up);
+                    window.removeEventListener('pointercancel', up);
+                    lblEl.classList.remove('dragging');
+                    siblings.forEach(s => s.classList.remove('drag-over'));
+                    if (targetIdx !== index && targetIdx >= 0 && targetIdx < listArr.length) {
+                        const [movedItem] = listArr.splice(index, 1);
+                        listArr.splice(targetIdx, 0, movedItem);
+                        if (kind === 'fx') {
+                            if (activeAnnoIdx === index) activeAnnoIdx = targetIdx;
+                            else if (index < activeAnnoIdx && targetIdx >= activeAnnoIdx) activeAnnoIdx--;
+                            else if (index > activeAnnoIdx && targetIdx <= activeAnnoIdx) activeAnnoIdx++;
+                            activeKeyframes = annotationTracks[activeAnnoIdx].keyframes;
+                        }
+                        activeCueKey = '';
+                        if (kind === 'media') renderMediaCues();
+                        else if (kind === 'audio') renderAudioTracks();
+                        else if (kind === 'text') renderTextCues();
+                        else render();
+                    }
+                };
+                window.addEventListener('pointermove', move);
+                window.addEventListener('pointerup', up);
+                window.addEventListener('pointercancel', up);
+            };
+        }
+
+        function createTrackRow(kind, index, text, color, listArr) {
+            const lbl = document.createElement('div');
+            lbl.className = 'tl-label';
+            lbl.title = 'Drag up/down to reorder layer';
+            lbl.innerHTML = `<span class="tl-grip">⋮⋮</span><span style="color:${color};overflow:hidden;text-overflow:ellipsis;">${text}</span>`;
+            attachTrackReorder(lbl, kind, index, listArr);
+            tlLabelsRows.appendChild(lbl);
+
+            const lane = document.createElement('div');
+            lane.className = 'tl-lane';
+            tlLanes.appendChild(lane);
+            return lane;
+        }
+
         function renderTimeline() {
             const dur = getTimelineDuration();
             tlCanvas.style.width = `${Math.max(tlCanvas.parentElement.clientWidth, dur * pxPerSec)}px`;
@@ -1197,9 +1255,12 @@
                 tlRuler.appendChild(tick);
             }
 
-            // Media Track
-            tlMedia.innerHTML = '';
+            tlLabelsRows.innerHTML = '';
+            tlLanes.innerHTML = '';
+
+            // Media Tracks (1 row per cue; topmost = foreground)
             mediaCues.forEach((cue, i) => {
+                const lane = createTrackRow('media', i, `M${i + 1}`, '#60a5fa', mediaCues);
                 const st = cue.start ?? 0, en = Math.max(st + 1, cue.end ?? st + 10);
                 const el = document.createElement('div');
                 el.className = `tl-clip type-${cue.type}`;
@@ -1232,12 +1293,12 @@
                         renderMediaCues(); renderTimeline();
                     });
                 };
-                tlMedia.appendChild(el);
+                lane.appendChild(el);
             });
 
-            // Audio Track
-            tlAudio.innerHTML = '';
+            // Audio Tracks
             audioTracks.forEach((tr, i) => {
+                const lane = createTrackRow('audio', i, `A${i + 1}`, '#4ade80', audioTracks);
                 const st = tr.start ?? 0;
                 const trDur = tr.duration > 0 ? tr.duration : (i === 0 && player.audio && isFinite(player.audio.duration) ? player.audio.duration : (tr.el && isFinite(tr.el.duration) ? tr.el.duration : 20));
                 const el = document.createElement('div');
@@ -1249,7 +1310,7 @@
                     const origStart = st;
                     let moved = false;
                     startTlDrag(e, (dx) => {
-                        if (i === 0) return; // Track 1 stays anchored at 0
+                        if (i === 0) return;
                         if (Math.abs(dx) > 3) moved = true;
                         tr.start = parseFloat(Math.max(0, origStart + dx / pxPerSec).toFixed(1));
                         el.style.left = `${tr.start * pxPerSec}px`;
@@ -1258,12 +1319,12 @@
                         renderAudioTracks(); renderTimeline();
                     });
                 };
-                tlAudio.appendChild(el);
+                lane.appendChild(el);
             });
 
-            // Text Track
-            tlText.innerHTML = '';
-            textCues.forEach((tc) => {
+            // Text Tracks
+            textCues.forEach((tc, i) => {
+                const lane = createTrackRow('text', i, `T${i + 1}`, '#fbbf24', textCues);
                 const st = tc.start ?? 0, en = Math.max(st + 0.5, tc.end ?? st + 5);
                 const el = document.createElement('div');
                 el.className = 'tl-clip type-text';
@@ -1294,12 +1355,12 @@
                         renderTextCues(); renderTimeline();
                     });
                 };
-                tlText.appendChild(el);
+                lane.appendChild(el);
             });
 
-            // FX / Keyframes Track (all annotation layers)
-            tlFx.innerHTML = '';
+            // FX / Annotation Layers (1 row per annotation layer)
             annotationTracks.forEach((tr, tIdx) => {
+                const lane = createTrackRow('fx', tIdx, `FX${tIdx + 1}`, tIdx === activeAnnoIdx ? '#ffd700' : '#a1a1aa', annotationTracks);
                 const keys = tr.keyframes;
                 for (let i = 0; i < keys.length - 1; i++) {
                     const k1 = keys[i], k2 = keys[i + 1];
@@ -1307,15 +1368,13 @@
                     span.className = `tl-fx-span effect-${k1.effect || 'none'}`;
                     span.style.left = `${k1.time * pxPerSec}px`;
                     span.style.width = `${Math.max(4, (k2.time - k1.time) * pxPerSec)}px`;
-                    if (tIdx !== activeAnnoIdx) span.style.opacity = '0.45';
-                    tlFx.appendChild(span);
+                    lane.appendChild(span);
                 }
                 keys.forEach((kf, i) => {
                     const marker = document.createElement('div');
                     marker.className = `tl-kf ${tIdx === activeAnnoIdx && i === selectedIdx ? 'selected' : ''}`;
                     marker.style.left = `${kf.time * pxPerSec}px`;
-                    if (tIdx !== activeAnnoIdx) marker.style.opacity = '0.6';
-                    marker.title = `${tr.name}: ${kf.type} (${kf.effect}) @ ${kf.time}s`;
+                    marker.title = `${tr.name}: ${kf.type} (${kf.effect}) @ ${kf.time}s (Alt+drag to duplicate)`;
                     marker.onpointerdown = (e) => {
                         const isAlt = e.altKey;
                         const origTime = kf.time;
@@ -1332,7 +1391,7 @@
                                     ghost.className = 'tl-kf';
                                     ghost.style.left = `${origTime * pxPerSec}px`;
                                     ghost.style.opacity = '0.5';
-                                    tlFx.appendChild(ghost);
+                                    lane.appendChild(ghost);
                                 }
                             }
                             targetKf.time = parseFloat(Math.max(0, origTime + dx / pxPerSec).toFixed(2));
@@ -1353,7 +1412,7 @@
                             render();
                         });
                     };
-                    tlFx.appendChild(marker);
+                    lane.appendChild(marker);
                 });
             });
             updatePlayhead(player.currentTime || 0);

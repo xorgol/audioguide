@@ -334,7 +334,7 @@
           const isPaused = !!(player.audio && player.audio.paused);
           if (mediaCues.length > 0) {
             const matches = mediaCues.filter(c => currentTime >= (c.start ?? 0) && currentTime <= (c.end ?? Infinity));
-            const cue = matches.length > 0 ? matches[matches.length - 1] : null;
+            const cue = matches.length > 0 ? matches[0] : null;
             const key = cue ? `${cue.type}:${cue.src}:${cue.start}` : 'default';
             if (key !== activeCueKey) {
               activeCueKey = key;
@@ -387,7 +387,7 @@
           // 2c. Text Cues Sync
           if (textCues.length > 0) {
             const activeTxt = textCues.filter(c => currentTime >= (c.start ?? 0) && currentTime <= (c.end ?? 0));
-            const tc = activeTxt.length > 0 ? activeTxt[activeTxt.length - 1] : null;
+            const tc = activeTxt.length > 0 ? activeTxt[0] : null;
             if (tc && tc.text) {
               textOverlay.classList.remove('hidden', 'pos-top', 'pos-center', 'pos-bottom');
               textOverlay.classList.add(`pos-${tc.position || 'bottom'}`);
