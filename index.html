@@ -330,6 +330,16 @@
             }
           }
 
+          function normalizeMediaUrl(url) {
+            if (!url) return url;
+            const ghBlob = url.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/(.+)$/);
+            if (ghBlob) return `https://raw.githubusercontent.com/${ghBlob[1]}/${ghBlob[2]}/${ghBlob[3]}`;
+            if (/^https?:\/\/(www\.)?dropbox\.com\//.test(url)) {
+              return url.replace(/[?&]dl=0\b/, '').replace(/\?$/, '') + (url.includes('?') ? '&raw=1' : '?raw=1');
+            }
+            return url;
+          }
+
           // 2. Media Cues & Video/3D Sync
           const isPaused = !!(player.audio && player.audio.paused);
           if (mediaCues.length > 0) {
@@ -339,7 +349,7 @@
             if (key !== activeCueKey) {
               activeCueKey = key;
               const type = cue ? cue.type : 'image';
-              const src = cue ? cue.src : 'carmignano.png';
+              const src = normalizeMediaUrl(cue ? cue.src : 'carmignano.png');
               activeMediaType = type;
               isVideoMode = (type === 'video');
               artworkBgImg.classList.toggle('hidden', type !== 'image');

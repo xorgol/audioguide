@@ -124,6 +124,7 @@
                 <svg id="annotation-layer" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
             </div>
             <div id="text-cue-overlay" class="pos-bottom hidden"></div>
+            <div id="media-error-banner" class="hidden" style="position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(185,28,28,0.92);color:#fff;padding:8px 14px;border-radius:6px;font-size:0.78rem;max-width:90%;z-index:50;text-align:center;"></div>
         </div>
         <div id="timeline-pane">
             <div id="timeline-toolbar">
@@ -687,14 +688,32 @@
         const lerp = (a, b, t) => a + (b - a) * t;
         const ease = (t, type) => (type === 'ease-in') ? t*t : (type === 'ease-out') ? t*(2-t) : t;
 
+        function normalizeMediaUrl(url) {
+            if (!url) return url;
+            const ghBlob = url.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/(.+)$/);
+            if (ghBlob) return `https://raw.githubusercontent.com/${ghBlob[1]}/${ghBlob[2]}/${ghBlob[3]}`;
+            if (/^https?:\/\/(www\.)?dropbox\.com\//.test(url)) {
+                return url.replace(/[?&]dl=0\b/, '').replace(/\?$/, '') + (url.includes('?') ? '&raw=1' : '?raw=1');
+            }
+            return url;
+        }
+
+        const mediaErrBanner = document.getElementById('media-error-banner');
+        model3d.addEventListener('load', () => { mediaErrBanner.classList.add('hidden'); });
+        model3d.addEventListener('error', () => {
+            mediaErrBanner.textContent = '3D model failed to load. The host may block CORS — use raw.githubusercontent.com, a CORS-enabled host, or upload the .glb file locally.';
+            mediaErrBanner.classList.remove('hidden');
+        });
+
         function syncMediaAtTime(t, isPaused) {
             const matches = mediaCues.filter(c => t >= (c.start ?? 0) && t <= (c.end ?? Infinity));
             const cue = matches.length > 0 ? matches[0] : null;
             const key = cue ? `${cue.type}:${cue.src}:${cue.start}` : 'default';
             if (key !== activeCueKey) {
                 activeCueKey = key;
+                mediaErrBanner.classList.add('hidden');
                 const type = cue ? cue.type : 'image';
-                const src = cue ? cue.src : 'carmignano.png';
+                const src = normalizeMediaUrl(cue ? cue.src : 'carmignano.png');
                 activeMediaType = type;
                 bg.classList.toggle('hidden', type !== 'image');
                 fg.classList.toggle('hidden', type !== 'image');
@@ -709,7 +728,10 @@
                     bgVid.muted = cue.muted !== false;
                     fgVid.muted = true;
                 } else if (type === 'model3d' && src) {
-                    if (model3d.getAttribute('src') !== src) model3d.src = src;
+                    if (model3d.getAttribute('src') !== src) {
+                        model3d.setAttribute('src', src);
+                        model3d.src = src;
+                    }
                     if (cue.autoRotate === false) model3d.removeAttribute('auto-rotate');
                     else model3d.setAttribute('auto-rotate', '');
                 }
@@ -820,7 +842,7 @@
                 card.querySelector('.c-type').onchange = e => { cue.type = e.target.value; activeCueKey = ''; renderMediaCues(); };
                 card.querySelector('.c-start').oninput = e => { cue.start = parseFloat(e.target.value) || 0; activeCueKey = ''; if (typeof renderTimeline === 'function') renderTimeline(); };
                 card.querySelector('.c-end').oninput = e => { cue.end = parseFloat(e.target.value) || 0; activeCueKey = ''; if (typeof renderTimeline === 'function') renderTimeline(); };
-                card.querySelector('.c-src').onchange = e => { cue.src = e.target.value; activeCueKey = ''; };
+                card.querySelector('.c-src').oninput = e => { cue.src = e.target.value.trim(); activeCueKey = ''; };
                 const mutedCb = card.querySelector('.c-muted');
                 if (mutedCb) mutedCb.onchange = e => { cue.muted = e.target.checked; activeCueKey = ''; };
                 const rotCb = card.querySelector('.c-rot');
