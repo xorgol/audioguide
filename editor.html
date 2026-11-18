@@ -353,9 +353,11 @@
 
         viewport.onpointerdown = (e) => {
             const loc = getLocalCoords(e);
-            if (selectedIdx === -1) {
+            const curT = parseFloat((player.currentTime || 0).toFixed(2));
+            const atDifferentTime = selectedIdx !== -1 && Math.abs(curT - activeKeyframes[selectedIdx].time) > 0.25;
+            if (selectedIdx === -1 || atDifferentTime) {
                 const kf = {
-                    time: parseFloat((player.currentTime || 0).toFixed(2)),
+                    time: curT,
                     x: loc.x, y: loc.y, zoom: 1.0, radius: 5,
                     type: propUI.type.value, effect: propUI.effect.value,
                     color: propUI.color.value, alpha: parseFloat(propUI.alpha.value),
@@ -405,7 +407,7 @@
         window.onpointercancel = stopDragging;
 
         document.getElementById('add-keyframe').onclick = () => {
-            const kf = { time: parseFloat(player.currentTime.toFixed(2)), x: 50, y: 50, zoom: 1.0, type: propUI.type.value, effect: propUI.effect.value, color: propUI.color.value, alpha: parseFloat(propUI.alpha.value), thickness: parseFloat(propUI.thickness.value), vSize: parseFloat(propUI.vSize.value), easing: 'linear', points: [] };
+            const kf = { time: parseFloat((player.currentTime || 0).toFixed(2)), x: 50, y: 50, zoom: 1.0, radius: 5, type: propUI.type.value, effect: propUI.effect.value, color: propUI.color.value, alpha: parseFloat(propUI.alpha.value), thickness: parseFloat(propUI.thickness.value), vSize: parseFloat(propUI.vSize.value), easing: 'linear', points: [] };
             activeKeyframes.push(kf); activeKeyframes.sort((a,b)=>a.time-b.time); selectedIdx = activeKeyframes.indexOf(kf); render();
         };
 
