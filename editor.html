@@ -214,6 +214,11 @@
                 <h3>Keyframes</h3>
                 <div id="keyframe-list"></div>
                 <button class="primary" id="add-keyframe">+ Add Keyframe</button>
+                <div class="btn-row" style="margin-top:6px;">
+                    <button id="copy-kf" type="button" style="background:#555; font-size:0.75rem;">Copy</button>
+                    <button id="cut-kf" type="button" style="background:#555; font-size:0.75rem;">Cut</button>
+                    <button id="paste-kf" type="button" style="background:#555; font-size:0.75rem;">Paste</button>
+                </div>
             </div>
         </div>
 
@@ -445,6 +450,36 @@
         document.getElementById('undo-point').onclick = () => { if (selectedIdx !== -1 && activeKeyframes[selectedIdx].points && activeKeyframes[selectedIdx].points.length > 0) { activeKeyframes[selectedIdx].points.pop(); render(); } };
         document.getElementById('clear-points').onclick = () => { if (selectedIdx !== -1) { activeKeyframes[selectedIdx].points = []; render(); } };
 
+        let copiedKeyframe = null;
+        function cloneKf(kf) {
+            return { ...kf, points: (kf.points || []).map(p => ({ ...p })) };
+        }
+        function copyKeyframe() {
+            if (selectedIdx === -1 || !activeKeyframes[selectedIdx]) return;
+            copiedKeyframe = cloneKf(activeKeyframes[selectedIdx]);
+        }
+        function cutKeyframe() {
+            if (selectedIdx === -1 || !activeKeyframes[selectedIdx]) return;
+            copiedKeyframe = cloneKf(activeKeyframes[selectedIdx]);
+            activeKeyframes.splice(selectedIdx, 1);
+            selectedIdx = activeKeyframes.length > 0 ? Math.min(selectedIdx, activeKeyframes.length - 1) : -1;
+            if (selectedIdx !== -1) Object.keys(propUI).forEach(k => { if (activeKeyframes[selectedIdx][k] !== undefined) propUI[k].value = activeKeyframes[selectedIdx][k]; });
+            render();
+        }
+        function pasteKeyframe() {
+            if (!copiedKeyframe) return;
+            const kf = cloneKf(copiedKeyframe);
+            kf.time = parseFloat((player.currentTime || 0).toFixed(2));
+            activeKeyframes.push(kf);
+            activeKeyframes.sort((a, b) => a.time - b.time);
+            selectedIdx = activeKeyframes.indexOf(kf);
+            Object.keys(propUI).forEach(k => { if (kf[k] !== undefined) propUI[k].value = kf[k]; });
+            render();
+        }
+        document.getElementById('copy-kf').onclick = copyKeyframe;
+        document.getElementById('cut-kf').onclick = cutKeyframe;
+        document.getElementById('paste-kf').onclick = pasteKeyframe;
+
         window.addEventListener('keydown', (e) => {
             const tag = (e.target && e.target.tagName) || '';
             const isTyping = ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(tag) || (e.target && e.target.isContentEditable);
@@ -456,8 +491,14 @@
                 }
                 return;
             }
-            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !isTyping && selectedIdx !== -1 && activeKeyframes[selectedIdx].points.length > 0) {
-                activeKeyframes[selectedIdx].points.pop(); render();
+            if ((e.ctrlKey || e.metaKey) && !isTyping) {
+                const key = e.key.toLowerCase();
+                if (key === 'c') { e.preventDefault(); copyKeyframe(); return; }
+                if (key === 'x') { e.preventDefault(); cutKeyframe(); return; }
+                if (key === 'v') { e.preventDefault(); pasteKeyframe(); return; }
+                if (key === 'z' && selectedIdx !== -1 && activeKeyframes[selectedIdx].points.length > 0) {
+                    activeKeyframes[selectedIdx].points.pop(); render();
+                }
             }
         });
 
