@@ -372,7 +372,7 @@
         });
 
         function getLocalCoords(e) {
-            const rect = stage.getBoundingClientRect();
+            const rect = svg.getBoundingClientRect();
             return {
                 x: parseFloat(Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100)).toFixed(1)),
                 y: parseFloat(Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100)).toFixed(1))
@@ -414,7 +414,11 @@
             const hitRadius = e.pointerType === 'touch' ? 6 : 3;
             if (kf.type === 'polygon') {
                 if (!kf.points) kf.points = [];
-                draggingPointIdx = kf.points.findIndex(p => Math.abs(p.x - loc.x) < hitRadius && Math.abs(p.y - loc.y) < hitRadius);
+                if (e.target && e.target.dataset && e.target.dataset.ptIdx !== undefined) {
+                    draggingPointIdx = parseInt(e.target.dataset.ptIdx, 10);
+                } else {
+                    draggingPointIdx = kf.points.findIndex(p => Math.hypot(p.x - loc.x, p.y - loc.y) < hitRadius);
+                }
                 if (draggingPointIdx === -1) { kf.points.push(loc); draggingPointIdx = kf.points.length - 1; }
             } else if (kf.type === 'circle') {
                 const dist = circleDist(kf.x, kf.y, loc.x, loc.y);
@@ -439,6 +443,14 @@
         const stopDragging = () => { isDragging = false; isSizingCircle = false; draggingPointIdx = -1; };
         window.onpointerup = stopDragging;
         window.onpointercancel = stopDragging;
+        viewport.ondblclick = (e) => {
+            if (selectedIdx === -1) return;
+            const kf = activeKeyframes[selectedIdx];
+            if (kf.type === 'polygon' && e.target && e.target.dataset && e.target.dataset.ptIdx !== undefined) {
+                const idx = parseInt(e.target.dataset.ptIdx, 10);
+                if (idx >= 0 && idx < kf.points.length) { kf.points.splice(idx, 1); render(); }
+            }
+        };
 
         document.getElementById('add-keyframe').onclick = () => {
             const kf = { time: parseFloat((player.currentTime || 0).toFixed(2)), x: 50, y: 50, zoom: 1.0, radius: 5, type: propUI.type.value, effect: propUI.effect.value, color: propUI.color.value, alpha: parseFloat(propUI.alpha.value), thickness: parseFloat(propUI.thickness.value), vSize: parseFloat(propUI.vSize.value), easing: 'linear', points: [] };
@@ -631,12 +643,18 @@
                     }
                 }
                 if (showHandles && idx === 0 && s.type === 'polygon' && s.points) {
-                    s.points.forEach(pt => {
+                    s.points.forEach((pt, ptIdx) => {
                         const h = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
                         h.setAttribute("cx", pt.x); h.setAttribute("cy", pt.y);
                         h.setAttribute("rx", ((s.vSize ?? 1.5) / Math.sqrt(stageAspect)).toFixed(2));
                         h.setAttribute("ry", ((s.vSize ?? 1.5) * Math.sqrt(stageAspect)).toFixed(2));
-                        h.setAttribute("fill", col); svg.appendChild(h);
+                        h.setAttribute("fill", col);
+                        h.setAttribute("stroke", "#000");
+                        h.setAttribute("stroke-width", "0.4");
+                        h.setAttribute("data-pt-idx", ptIdx);
+                        h.style.pointerEvents = "auto";
+                        h.style.cursor = "move";
+                        svg.appendChild(h);
                     });
                 }
             });
