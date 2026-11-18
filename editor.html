@@ -327,9 +327,28 @@
         }
 
         viewport.onpointerdown = (e) => {
-            if (selectedIdx === -1) return;
+            const loc = getLocalCoords(e);
+            if (selectedIdx === -1) {
+                const kf = {
+                    time: parseFloat((player.currentTime || 0).toFixed(2)),
+                    x: loc.x, y: loc.y, zoom: 1.0,
+                    type: propUI.type.value, effect: propUI.effect.value,
+                    color: propUI.color.value, alpha: parseFloat(propUI.alpha.value),
+                    thickness: parseFloat(propUI.thickness.value), vSize: parseFloat(propUI.vSize.value),
+                    easing: 'linear',
+                    points: propUI.type.value === 'polygon' ? [loc] : []
+                };
+                activeKeyframes.push(kf);
+                activeKeyframes.sort((a, b) => a.time - b.time);
+                selectedIdx = activeKeyframes.indexOf(kf);
+                isDragging = true;
+                draggingPointIdx = kf.type === 'polygon' ? 0 : -1;
+                render();
+                viewport.setPointerCapture(e.pointerId);
+                return;
+            }
             isDragging = true;
-            const loc = getLocalCoords(e), kf = activeKeyframes[selectedIdx];
+            const kf = activeKeyframes[selectedIdx];
             const hitRadius = e.pointerType === 'touch' ? 6 : 3;
             if (kf.type === 'polygon') {
                 if (!kf.points) kf.points = [];
@@ -392,12 +411,19 @@
                     svg.appendChild(c);
                 } else if (s.type === 'pointer') {
                     const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
-                    l.setAttribute("x1", s.x + 3); l.setAttribute("y1", s.y + 3); l.setAttribute("x2", s.x); l.setAttribute("y2", s.y);
-                    l.setAttribute("stroke", col); l.setAttribute("stroke-width", s.thickness);
+                    l.setAttribute("x1", s.x + 4); l.setAttribute("y1", s.y + 4); l.setAttribute("x2", s.x); l.setAttribute("y2", s.y);
+                    l.setAttribute("stroke", col); l.setAttribute("stroke-width", Math.max(2, s.thickness));
                     l.setAttribute("vector-effect", "non-scaling-stroke");
                     svg.appendChild(l);
-                } else if (s.type === 'polygon' && s.points) {
-                    const p = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+                    const dot = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+                    dot.setAttribute("cx", s.x); dot.setAttribute("cy", s.y);
+                    dot.setAttribute("rx", (1.2 / Math.sqrt(stageAspect)).toFixed(2));
+                    dot.setAttribute("ry", (1.2 * Math.sqrt(stageAspect)).toFixed(2));
+                    dot.setAttribute("fill", col);
+                    svg.appendChild(dot);
+                } else if (s.type === 'polygon' && s.points && s.points.length > 1) {
+                    const tag = s.points.length > 2 ? "polygon" : "polyline";
+                    const p = document.createElementNS("http://www.w3.org/2000/svg", tag);
                     p.setAttribute("points", s.points.map(pt=>`${pt.x},${pt.y}`).join(' '));
                     p.setAttribute("fill", "none"); p.setAttribute("stroke", col); p.setAttribute("stroke-width", s.thickness);
                     p.setAttribute("vector-effect", "non-scaling-stroke");
