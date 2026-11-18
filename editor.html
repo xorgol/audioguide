@@ -1262,18 +1262,33 @@
                     if (tIdx !== activeAnnoIdx) marker.style.opacity = '0.6';
                     marker.title = `${tr.name}: ${kf.type} (${kf.effect}) @ ${kf.time}s`;
                     marker.onpointerdown = (e) => {
+                        const isAlt = e.altKey;
                         const origTime = kf.time;
+                        const targetKf = isAlt ? { ...kf, points: (kf.points || []).map(p => ({ ...p })) } : kf;
                         let moved = false;
+                        let duplicated = false;
                         startTlDrag(e, (dx) => {
-                            if (Math.abs(dx) > 3) moved = true;
-                            kf.time = parseFloat(Math.max(0, origTime + dx / pxPerSec).toFixed(2));
-                            marker.style.left = `${kf.time * pxPerSec}px`;
+                            if (Math.abs(dx) > 3) {
+                                moved = true;
+                                if (isAlt && !duplicated) {
+                                    duplicated = true;
+                                    keys.push(targetKf);
+                                    const ghost = document.createElement('div');
+                                    ghost.className = 'tl-kf';
+                                    ghost.style.left = `${origTime * pxPerSec}px`;
+                                    ghost.style.opacity = '0.5';
+                                    tlFx.appendChild(ghost);
+                                }
+                            }
+                            targetKf.time = parseFloat(Math.max(0, origTime + dx / pxPerSec).toFixed(2));
+                            marker.style.left = `${targetKf.time * pxPerSec}px`;
                         }, () => {
                             activeAnnoIdx = tIdx;
                             activeKeyframes = annotationTracks[activeAnnoIdx].keyframes;
                             if (moved) {
                                 activeKeyframes.sort((a, b) => a.time - b.time);
-                                selectedIdx = activeKeyframes.indexOf(kf);
+                                selectedIdx = activeKeyframes.indexOf(targetKf);
+                                Object.keys(propUI).forEach(k => { if (targetKf[k] !== undefined) propUI[k].value = targetKf[k]; });
                             } else {
                                 selectedIdx = i;
                                 Object.keys(propUI).forEach(k => { if (kf[k] !== undefined) propUI[k].value = kf[k]; });
