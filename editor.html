@@ -766,8 +766,8 @@
                 `;
                 card.querySelector('.c-label').onchange = e => { cue.label = e.target.value; renderMediaCues(); };
                 card.querySelector('.c-type').onchange = e => { cue.type = e.target.value; activeCueKey = ''; renderMediaCues(); };
-                card.querySelector('.c-start').onchange = e => { cue.start = parseFloat(e.target.value) || 0; activeCueKey = ''; };
-                card.querySelector('.c-end').onchange = e => { cue.end = parseFloat(e.target.value) || 0; activeCueKey = ''; };
+                card.querySelector('.c-start').oninput = e => { cue.start = parseFloat(e.target.value) || 0; activeCueKey = ''; if (typeof renderTimeline === 'function') renderTimeline(); };
+                card.querySelector('.c-end').oninput = e => { cue.end = parseFloat(e.target.value) || 0; activeCueKey = ''; if (typeof renderTimeline === 'function') renderTimeline(); };
                 card.querySelector('.c-src').onchange = e => { cue.src = e.target.value; activeCueKey = ''; };
                 const mutedCb = card.querySelector('.c-muted');
                 if (mutedCb) mutedCb.onchange = e => { cue.muted = e.target.checked; activeCueKey = ''; };
@@ -832,9 +832,9 @@
                     <div style="margin-top:6px;"><label style="font-size:0.65rem;color:#666;">Audio Source URL / File</label><input type="text" class="t-src" value="${tr.src || ''}" placeholder="narration.mp3"></div>
                 `;
                 card.querySelector('.t-name').onchange = e => { tr.name = e.target.value; renderAudioTracks(); };
-                card.querySelector('.t-vol').onchange = e => { tr.volume = Math.max(0, Math.min(1, parseFloat(e.target.value) || 0)); };
-                card.querySelector('.t-start').onchange = e => { tr.start = Math.max(0, parseFloat(e.target.value) || 0); };
-                card.querySelector('.t-trim').onchange = e => { tr.trimStart = Math.max(0, parseFloat(e.target.value) || 0); };
+                card.querySelector('.t-vol').oninput = e => { tr.volume = Math.max(0, Math.min(1, parseFloat(e.target.value) || 0)); };
+                card.querySelector('.t-start').oninput = e => { tr.start = Math.max(0, parseFloat(e.target.value) || 0); if (typeof renderTimeline === 'function') renderTimeline(); };
+                card.querySelector('.t-trim').oninput = e => { tr.trimStart = Math.max(0, parseFloat(e.target.value) || 0); };
                 card.querySelector('.t-src').onchange = e => {
                     tr.src = e.target.value;
                     if (i === 0 && player.audio) { player.audio.src = tr.src; }
@@ -1063,8 +1063,8 @@
                     </div>
                 `;
                 card.querySelector('.tc-text').oninput = e => { tc.text = e.target.value; syncTextAtTime(player.currentTime || 0); if (typeof renderTimeline === 'function') renderTimeline(); };
-                card.querySelector('.tc-start').onchange = e => { tc.start = parseFloat(e.target.value) || 0; syncTextAtTime(player.currentTime || 0); if (typeof renderTimeline === 'function') renderTimeline(); };
-                card.querySelector('.tc-end').onchange = e => { tc.end = parseFloat(e.target.value) || 0; syncTextAtTime(player.currentTime || 0); if (typeof renderTimeline === 'function') renderTimeline(); };
+                card.querySelector('.tc-start').oninput = e => { tc.start = parseFloat(e.target.value) || 0; syncTextAtTime(player.currentTime || 0); if (typeof renderTimeline === 'function') renderTimeline(); };
+                card.querySelector('.tc-end').oninput = e => { tc.end = parseFloat(e.target.value) || 0; syncTextAtTime(player.currentTime || 0); if (typeof renderTimeline === 'function') renderTimeline(); };
                 card.querySelector('.tc-pos').onchange = e => { tc.position = e.target.value; syncTextAtTime(player.currentTime || 0); };
                 card.querySelector('.tc-color').oninput = e => { tc.color = e.target.value; syncTextAtTime(player.currentTime || 0); };
                 card.querySelector('.tc-jump').onclick = () => { player.seek(tc.start || 0); syncTextAtTime(tc.start || 0); };
