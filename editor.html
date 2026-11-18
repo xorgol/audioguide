@@ -82,6 +82,11 @@
         .tl-clip.type-video { background: #0f766e; }
         .tl-clip.type-model3d { background: #6d28d9; }
         .tl-clip.type-audio { background: #2d6a4f; }
+        .tl-clip.type-text { background: #b45309; }
+        #text-cue-overlay { position: absolute; left: 50%; transform: translateX(-50%); max-width: 85%; padding: 8px 16px; border-radius: 8px; background: rgba(0,0,0,0.72); color: #fff; font-weight: 600; font-size: 1.05rem; text-align: center; pointer-events: none; z-index: 40; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+        #text-cue-overlay.pos-bottom { bottom: 14px; top: auto; }
+        #text-cue-overlay.pos-center { top: 50%; bottom: auto; transform: translate(-50%, -50%); }
+        #text-cue-overlay.pos-top { top: 14px; bottom: auto; }
         .tl-clip-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 8px; cursor: ew-resize; background: rgba(255,255,255,0.22); }
         .tl-fx-span { position: absolute; top: 8px; bottom: 8px; border-radius: 3px; background: rgba(255, 215, 0, 0.25); border: 1px solid rgba(255, 215, 0, 0.5); pointer-events: none; }
         .tl-fx-span.effect-blur { background: rgba(56, 189, 248, 0.3); border-color: #38bdf8; }
@@ -115,6 +120,7 @@
                 <model-viewer id="artwork-model-3d" class="artwork-layer hidden" camera-controls auto-rotate shadow-intensity="1"></model-viewer>
                 <svg id="annotation-layer" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
             </div>
+            <div id="text-cue-overlay" class="pos-bottom hidden"></div>
         </div>
         <div id="timeline-pane">
             <div id="timeline-toolbar">
@@ -129,6 +135,7 @@
                     <div class="tl-label ruler-lbl">TIME</div>
                     <div class="tl-label">MEDIA</div>
                     <div class="tl-label">AUDIO</div>
+                    <div class="tl-label">TEXT</div>
                     <div class="tl-label">FX</div>
                 </div>
                 <div id="timeline-scroll">
@@ -136,6 +143,7 @@
                         <div id="tl-ruler"></div>
                         <div id="tl-track-media" class="tl-lane"></div>
                         <div id="tl-track-audio" class="tl-lane"></div>
+                        <div id="tl-track-text" class="tl-lane"></div>
                         <div id="tl-track-fx" class="tl-lane"></div>
                         <div id="tl-playhead" style="left:0"></div>
                     </div>
@@ -153,6 +161,7 @@
             <button class="tab-btn" data-tab="info">Info</button>
             <button class="tab-btn" data-tab="media">Media</button>
             <button class="tab-btn" data-tab="audio">Audio</button>
+            <button class="tab-btn" data-tab="text">Text</button>
         </div>
 
         <div id="tab-annotate" class="tab-panel active">
@@ -240,6 +249,14 @@
             </div>
         </div>
 
+        <div id="tab-text" class="tab-panel">
+            <div class="section">
+                <p class="hint">Add timed text overlays or captions to the timeline.</p>
+                <div id="text-cue-list"></div>
+                <button id="add-text-cue" class="primary">+ Add Text Cue</button>
+            </div>
+        </div>
+
         <div class="btn-row" style="margin-top: auto; flex-wrap: wrap;">
             <button id="load-default-json" style="background:#555">Load Default</button>
             <button id="import-json" style="background:#555">Import JSON</button>
@@ -262,11 +279,12 @@
         let audioTracks = [
             { id: 'track-1', name: 'Main Narration', src: 'demo.mp3', start: 0, trimStart: 0, duration: 0, volume: 1, el: null }
         ];
+        let textCues = [];
         let activeCueKey = '';
         let activeMediaType = 'image';
 
-        const bg = document.getElementById('artwork-image-bg'), fg = document.getElementById('artwork-image-fg'), bgVid = document.getElementById('artwork-video-bg'), fgVid = document.getElementById('artwork-video-fg'), model3d = document.getElementById('artwork-model-3d'), svg = document.getElementById('annotation-layer'), list = document.getElementById('keyframe-list'), viewport = document.getElementById('viewport-container'), stage = document.getElementById('artwork-stage');
-        const tlCanvas = document.getElementById('timeline-canvas'), tlRuler = document.getElementById('tl-ruler'), tlMedia = document.getElementById('tl-track-media'), tlAudio = document.getElementById('tl-track-audio'), tlFx = document.getElementById('tl-track-fx'), tlPlayhead = document.getElementById('tl-playhead'), tlTimeLbl = document.getElementById('tl-time'), tlZoomInp = document.getElementById('tl-zoom');
+        const bg = document.getElementById('artwork-image-bg'), fg = document.getElementById('artwork-image-fg'), bgVid = document.getElementById('artwork-video-bg'), fgVid = document.getElementById('artwork-video-fg'), model3d = document.getElementById('artwork-model-3d'), svg = document.getElementById('annotation-layer'), list = document.getElementById('keyframe-list'), viewport = document.getElementById('viewport-container'), stage = document.getElementById('artwork-stage'), textOverlay = document.getElementById('text-cue-overlay');
+        const tlCanvas = document.getElementById('timeline-canvas'), tlRuler = document.getElementById('tl-ruler'), tlMedia = document.getElementById('tl-track-media'), tlAudio = document.getElementById('tl-track-audio'), tlText = document.getElementById('tl-track-text'), tlFx = document.getElementById('tl-track-fx'), tlPlayhead = document.getElementById('tl-playhead'), tlTimeLbl = document.getElementById('tl-time'), tlZoomInp = document.getElementById('tl-zoom');
         let pxPerSec = parseFloat(tlZoomInp.value) || 14;
         let stageAspect = 1;
 
@@ -377,7 +395,17 @@
         document.getElementById('clear-points').onclick = () => { if (selectedIdx !== -1) { activeKeyframes[selectedIdx].points = []; render(); } };
 
         window.addEventListener('keydown', (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && selectedIdx !== -1 && activeKeyframes[selectedIdx].points.length > 0) {
+            const tag = (e.target && e.target.tagName) || '';
+            const isTyping = ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(tag) || (e.target && e.target.isContentEditable);
+            if (e.code === 'Space' && !isTyping) {
+                e.preventDefault();
+                if (player.audio) {
+                    if (player.audio.paused) player.play();
+                    else player.pause();
+                }
+                return;
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !isTyping && selectedIdx !== -1 && activeKeyframes[selectedIdx].points.length > 0) {
                 activeKeyframes[selectedIdx].points.pop(); render();
             }
         });
@@ -529,11 +557,25 @@
             });
         }
 
+        function syncTextAtTime(t) {
+            const active = textCues.filter(c => t >= (c.start ?? 0) && t <= (c.end ?? 0));
+            const cue = active.length > 0 ? active[active.length - 1] : null;
+            if (!cue || !cue.text) {
+                textOverlay.classList.add('hidden');
+                return;
+            }
+            textOverlay.classList.remove('hidden', 'pos-top', 'pos-center', 'pos-bottom');
+            textOverlay.classList.add(`pos-${cue.position || 'bottom'}`);
+            textOverlay.style.color = cue.color || '#ffffff';
+            textOverlay.textContent = cue.text;
+        }
+
         setInterval(() => {
             const t = player.currentTime || 0;
             const isPaused = !(player.audio && !player.audio.paused);
             syncMediaAtTime(t, isPaused);
             syncExtraAudio(t, isPaused);
+            syncTextAtTime(t);
             if (typeof updatePlayhead === 'function') updatePlayhead(t);
             if (!isPaused && activeKeyframes.length > 1 && !isDragging) {
                 let k1 = null, k2 = null;
@@ -749,6 +791,7 @@
                     document.getElementById('meta-desc').value = data.metadata.description || '';
                 }
                 if (Array.isArray(data.mediaCues)) { mediaCues = data.mediaCues; activeCueKey = ''; renderMediaCues(); }
+                if (Array.isArray(data.textCues)) { textCues = data.textCues; renderTextCues(); }
                 if (Array.isArray(data.audioTracks) && data.audioTracks.length > 0) {
                     audioTracks = data.audioTracks.map(t => ({ ...t, el: null }));
                     if (audioTracks[0].src && player.audio) player.audio.src = audioTracks[0].src;
@@ -798,6 +841,7 @@
                 },
                 audioTracks: audioTracks.map(({ el, ...rest }) => rest),
                 mediaCues,
+                textCues,
                 annotations: [{ keyframes: activeKeyframes }]
             };
             const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
@@ -810,17 +854,60 @@
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'annotations.json'; a.click();
         };
 
+        // Text Cues UI
+        const textCueList = document.getElementById('text-cue-list');
+        function renderTextCues() {
+            textCueList.innerHTML = '';
+            textCues.forEach((tc, i) => {
+                const card = document.createElement('div');
+                card.className = 'cue-card';
+                card.innerHTML = `
+                    <div class="cue-card-head">
+                        <span>Text #${i + 1}</span>
+                        <div style="display:flex;gap:4px;">
+                            <button type="button" class="tc-jump" style="background:#555;padding:4px 8px;min-height:28px;font-size:0.7rem;">Preview</button>
+                            <button type="button" class="tc-del" style="background:#ff4747;padding:4px 8px;min-height:28px;font-size:0.7rem;">×</button>
+                        </div>
+                    </div>
+                    <textarea rows="2" class="tc-text" placeholder="Text to show on timeline...">${tc.text || ''}</textarea>
+                    <div class="cue-grid">
+                        <div><label>Start (s)</label><input type="number" step="0.1" class="tc-start" value="${tc.start ?? 0}"></div>
+                        <div><label>End (s)</label><input type="number" step="0.1" class="tc-end" value="${tc.end ?? 5}"></div>
+                        <div><label>Position</label><select class="tc-pos"><option value="bottom" ${tc.position==='bottom'?'selected':''}>Bottom</option><option value="center" ${tc.position==='center'?'selected':''}>Center</option><option value="top" ${tc.position==='top'?'selected':''}>Top</option></select></div>
+                        <div><label>Color</label><input type="color" class="tc-color" value="${tc.color || '#ffffff'}"></div>
+                    </div>
+                `;
+                card.querySelector('.tc-text').oninput = e => { tc.text = e.target.value; syncTextAtTime(player.currentTime || 0); if (typeof renderTimeline === 'function') renderTimeline(); };
+                card.querySelector('.tc-start').onchange = e => { tc.start = parseFloat(e.target.value) || 0; syncTextAtTime(player.currentTime || 0); if (typeof renderTimeline === 'function') renderTimeline(); };
+                card.querySelector('.tc-end').onchange = e => { tc.end = parseFloat(e.target.value) || 0; syncTextAtTime(player.currentTime || 0); if (typeof renderTimeline === 'function') renderTimeline(); };
+                card.querySelector('.tc-pos').onchange = e => { tc.position = e.target.value; syncTextAtTime(player.currentTime || 0); };
+                card.querySelector('.tc-color').oninput = e => { tc.color = e.target.value; syncTextAtTime(player.currentTime || 0); };
+                card.querySelector('.tc-jump').onclick = () => { player.seek(tc.start || 0); syncTextAtTime(tc.start || 0); };
+                card.querySelector('.tc-del').onclick = () => { textCues.splice(i, 1); syncTextAtTime(player.currentTime || 0); renderTextCues(); };
+                textCueList.appendChild(card);
+            });
+            if (typeof renderTimeline === 'function') renderTimeline();
+        }
+        document.getElementById('add-text-cue').onclick = () => {
+            const t = parseFloat((player.currentTime || 0).toFixed(1));
+            textCues.push({ id: `text-${Date.now()}`, text: 'New caption text', start: t, end: t + 5, position: 'bottom', color: '#ffffff' });
+            renderTextCues();
+            syncTextAtTime(t);
+        };
+
         renderMediaCues();
         renderAudioTracks();
+        renderTextCues();
 
         // Multi-Track Timeline Logic
 
         function getTimelineDuration() {
             const audioDur = (player.audio && isFinite(player.audio.duration)) ? player.audio.duration : 60;
             const maxMedia = mediaCues.reduce((m, c) => Math.max(m, c.end || 0), 0);
+            const maxText = textCues.reduce((m, c) => Math.max(m, c.end || 0), 0);
             const maxAudio = audioTracks.reduce((m, tr) => Math.max(m, (tr.start || 0) + (tr.duration > 0 ? tr.duration : 20)), 0);
             const maxKf = activeKeyframes.reduce((m, k) => Math.max(m, k.time || 0), 0);
-            return Math.max(30, Math.ceil(Math.max(audioDur, maxMedia, maxAudio, maxKf + 5)));
+            return Math.max(30, Math.ceil(Math.max(audioDur, maxMedia, maxText, maxAudio, maxKf + 5)));
         }
 
         function fmtTime(sec) {
@@ -931,6 +1018,42 @@
                     });
                 };
                 tlAudio.appendChild(el);
+            });
+
+            // Text Track
+            tlText.innerHTML = '';
+            textCues.forEach((tc) => {
+                const st = tc.start ?? 0, en = Math.max(st + 0.5, tc.end ?? st + 5);
+                const el = document.createElement('div');
+                el.className = 'tl-clip type-text';
+                el.style.left = `${st * pxPerSec}px`;
+                el.style.width = `${Math.max(16, (en - st) * pxPerSec)}px`;
+                el.textContent = tc.text || 'Text';
+                const rz = document.createElement('div');
+                rz.className = 'tl-clip-resize';
+                rz.onpointerdown = (e) => {
+                    const origEnd = en;
+                    startTlDrag(e, (dx) => {
+                        tc.end = parseFloat(Math.max(st + 0.5, origEnd + dx / pxPerSec).toFixed(1));
+                        el.style.width = `${Math.max(16, (tc.end - st) * pxPerSec)}px`;
+                    }, () => { renderTextCues(); renderTimeline(); });
+                };
+                el.appendChild(rz);
+                el.onpointerdown = (e) => {
+                    if (e.target === rz) return;
+                    const origStart = st, origLen = en - st;
+                    let moved = false;
+                    startTlDrag(e, (dx) => {
+                        if (Math.abs(dx) > 3) moved = true;
+                        tc.start = parseFloat(Math.max(0, origStart + dx / pxPerSec).toFixed(1));
+                        tc.end = parseFloat((tc.start + origLen).toFixed(1));
+                        el.style.left = `${tc.start * pxPerSec}px`;
+                    }, () => {
+                        if (!moved) { player.seek(tc.start); switchTab('text'); }
+                        renderTextCues(); renderTimeline();
+                    });
+                };
+                tlText.appendChild(el);
             });
 
             // FX / Keyframes Track

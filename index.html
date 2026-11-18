@@ -72,6 +72,10 @@
       #artwork-image-bg, #artwork-video-bg { z-index: 10; }
       #artwork-image-fg, #artwork-video-fg { z-index: 20; }
       #artwork-model-3d { z-index: 25; background: radial-gradient(circle, #222 0%, #000 100%); }
+      #text-cue-overlay { position: absolute; left: 50%; transform: translateX(-50%); max-width: 85%; padding: 8px 16px; border-radius: 8px; background: rgba(0,0,0,0.72); color: #fff; font-weight: 600; font-size: 1.15rem; text-align: center; pointer-events: none; z-index: 95; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+      #text-cue-overlay.pos-bottom { bottom: 90px; top: auto; }
+      #text-cue-overlay.pos-center { top: 50%; bottom: auto; transform: translate(-50%, -50%); }
+      #text-cue-overlay.pos-top { top: 20px; bottom: auto; }
 
       #annotation-layer {
         position: absolute;
@@ -189,6 +193,8 @@
           <svg id="annotation-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
         </div>
 
+        <div id="text-cue-overlay" class="pos-bottom hidden"></div>
+
         <div id="subtitle-overlay">
           <div id="subtitle-container" class="subtitle-text"></div>
         </div>
@@ -221,11 +227,13 @@
         const artworkBgVid = document.getElementById('artwork-video-bg');
         const artworkFgVid = document.getElementById('artwork-video-fg');
         const artworkModel3d = document.getElementById('artwork-model-3d');
+        const textOverlay = document.getElementById('text-cue-overlay');
         const annotationLayer = document.getElementById('annotation-layer');
 
         let displayMode = 'subtitles'; // 'subtitles' or 'transcript'
         let annotations = [];
         let mediaCues = [];
+        let textCues = [];
         let extraAudioTracks = [];
         let activeCueKey = '';
         let activeMediaType = 'image';
@@ -376,6 +384,20 @@
             }
           });
 
+          // 2c. Text Cues Sync
+          if (textCues.length > 0) {
+            const activeTxt = textCues.filter(c => currentTime >= (c.start ?? 0) && currentTime <= (c.end ?? 0));
+            const tc = activeTxt.length > 0 ? activeTxt[activeTxt.length - 1] : null;
+            if (tc && tc.text) {
+              textOverlay.classList.remove('hidden', 'pos-top', 'pos-center', 'pos-bottom');
+              textOverlay.classList.add(`pos-${tc.position || 'bottom'}`);
+              textOverlay.style.color = tc.color || '#ffffff';
+              textOverlay.textContent = tc.text;
+            } else {
+              textOverlay.classList.add('hidden');
+            }
+          }
+
           // 3. Annotations
           let activeState = null;
           for (const anno of annotations) {
@@ -516,6 +538,9 @@
               if (Array.isArray(projectData.mediaCues)) {
                 mediaCues = projectData.mediaCues;
               }
+              if (Array.isArray(projectData.textCues)) {
+                textCues = projectData.textCues;
+              }
               if (Array.isArray(projectData.audioTracks) && projectData.audioTracks.length > 0) {
                 const firstTrack = projectData.audioTracks[0];
                 if (firstTrack.src && player.audio && firstTrack.src !== 'demo.mp3') {
@@ -564,6 +589,17 @@
         player.on('canplay', () => { 
             console.log('Player can play');
             window.player = player; 
+        });
+        window.addEventListener('keydown', (e) => {
+          const tag = (e.target && e.target.tagName) || '';
+          const isTyping = ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(tag) || (e.target && e.target.isContentEditable);
+          if (e.code === 'Space' && !isTyping) {
+            e.preventDefault();
+            if (player.audio) {
+              if (player.audio.paused) player.play();
+              else player.pause();
+            }
+          }
         });
         init();
       });
