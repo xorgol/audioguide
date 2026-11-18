@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-MUSE | Professional Annotation Editor</title>
+    <title>E-MUSE | Audioguide Studio & Editor</title>
     <link rel="stylesheet" href="shinkwasa.css">
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
     <style>
         :root { --primary: #954747; --bg: #f5f5f5; --panel: #ffffff; --text: #333; }
         * { box-sizing: border-box; }
@@ -14,9 +15,24 @@
         #viewport-container { flex: 1; min-height: 0; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: crosshair; touch-action: none; }
         #artwork-stage { position: relative; width: 100%; height: 100%; }
         .artwork-layer, #annotation-layer { position: absolute; width: 100%; height: 100%; top: 0; left: 0; object-fit: fill; transform-origin: center; pointer-events: none; }
-        #artwork-image-bg { z-index: 10; transition: transform 0.1s linear, filter 0.3s ease; }
-        #artwork-image-fg { z-index: 20; transition: transform 0.1s linear, clip-path 0.1s linear; }
+        #artwork-image-bg, #artwork-video-bg { z-index: 10; transition: transform 0.1s linear, filter 0.3s ease; }
+        #artwork-image-fg, #artwork-video-fg { z-index: 20; transition: transform 0.1s linear, clip-path 0.1s linear; }
+        #artwork-model-3d { z-index: 25; background: radial-gradient(circle, #222 0%, #000 100%); pointer-events: auto; }
         #annotation-layer { z-index: 30; }
+        .hidden { display: none !important; }
+        textarea { width: 100%; padding: 6px; margin-bottom: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.8rem; font-family: inherit; resize: vertical; }
+        .tabs { display: flex; gap: 4px; margin-bottom: 12px; flex-shrink: 0; }
+        .tab-btn { flex: 1; background: #e0e0e0; color: #333; padding: 8px 4px; font-size: 0.75rem; min-height: 36px; }
+        .tab-btn.active { background: var(--primary); color: #fff; }
+        .tab-panel { display: none; flex-direction: column; }
+        .tab-panel.active { display: flex; }
+        .cue-card { background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 8px; margin-bottom: 8px; font-size: 0.75rem; }
+        .cue-card-head { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 6px; font-weight: bold; }
+        .cue-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+        .cue-grid label { font-size: 0.65rem; color: #666; }
+        .cue-grid input, .cue-grid select { margin-bottom: 0; padding: 4px; font-size: 0.75rem; }
+        .inline-check { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; margin-top: 4px; }
+        .inline-check input { width: auto; min-height: auto; margin: 0; }
 
         #player-container { flex: 0 0 auto; background: #fff; padding: 8px 10px; }
         #control-pane { width: 450px; max-width: 100%; background: var(--panel); display: flex; flex-direction: column; padding: 20px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
@@ -64,6 +80,9 @@
             <div id="artwork-stage">
                 <img id="artwork-image-bg" class="artwork-layer" src="carmignano.png">
                 <img id="artwork-image-fg" class="artwork-layer" src="carmignano.png">
+                <video id="artwork-video-bg" class="artwork-layer hidden" muted loop playsinline></video>
+                <video id="artwork-video-fg" class="artwork-layer hidden" muted loop playsinline></video>
+                <model-viewer id="artwork-model-3d" class="artwork-layer hidden" camera-controls auto-rotate shadow-intensity="1"></model-viewer>
                 <svg id="annotation-layer" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
             </div>
         </div>
@@ -71,57 +90,105 @@
     </div>
 
     <div id="control-pane">
-        <h2>Professional Editor</h2>
+        <h2>Audioguide Studio</h2>
 
-        <div class="section">
-            <p class="hint">Shortcut: <b>Ctrl+Z</b> Undo vertex. <b>Tap/Click</b> Art to set focus/add point.</p>
-            <label>Marker Type</label>
-            <select id="prop-type">
-                <option value="circle">Circle (Pulse)</option>
-                <option value="pointer">Pointer (Minimal)</option>
-                <option value="polygon">Polygon (Area)</option>
-                <option value="none">Zoom Only</option>
-            </select>
+        <div class="tabs" role="tablist">
+            <button class="tab-btn active" data-tab="annotate">Annotate</button>
+            <button class="tab-btn" data-tab="info">Info</button>
+            <button class="tab-btn" data-tab="media">Media</button>
+            <button class="tab-btn" data-tab="audio">Audio</button>
+        </div>
 
-            <label>Exterior Effect</label>
-            <select id="prop-effect">
-                <option value="none">None</option>
-                <option value="blur">Blur</option>
-                <option value="grayscale">Grayscale</option>
-            </select>
+        <div id="tab-annotate" class="tab-panel active">
+            <div class="section">
+                <p class="hint">Shortcut: <b>Ctrl+Z</b> Undo vertex. <b>Tap/Click</b> Art to set focus/add point.</p>
+                <label>Marker Type</label>
+                <select id="prop-type">
+                    <option value="circle">Circle (Pulse)</option>
+                    <option value="pointer">Pointer (Minimal)</option>
+                    <option value="polygon">Polygon (Area)</option>
+                    <option value="none">Zoom Only</option>
+                </select>
 
-            <div class="control-row">
-                <label>Color & Alpha</label>
-                <input type="color" id="prop-color" value="#ffd700">
-                <input type="range" id="prop-alpha" min="0" max="1" step="0.1" value="1">
+                <label>Exterior Effect</label>
+                <select id="prop-effect">
+                    <option value="none">None</option>
+                    <option value="blur">Blur</option>
+                    <option value="grayscale">Grayscale</option>
+                </select>
+
+                <div class="control-row">
+                    <label>Color & Alpha</label>
+                    <input type="color" id="prop-color" value="#ffd700">
+                    <input type="range" id="prop-alpha" min="0" max="1" step="0.1" value="1">
+                </div>
+
+                <div class="control-row">
+                    <label>Thickness</label>
+                    <input type="number" id="prop-thickness" value="2" min="0" max="20" step="0.5">
+                </div>
+
+                <div class="control-row">
+                    <label>Vertex Size</label>
+                    <input type="number" id="prop-vsize" value="1.5" min="0.1" max="10" step="0.1">
+                </div>
+                
+                <div class="btn-row">
+                    <button id="undo-point" style="background:#777; font-size:0.75rem;">Undo Last Point</button>
+                    <button id="clear-points" style="background:#888; font-size:0.75rem;">Clear Points</button>
+                </div>
             </div>
 
-            <div class="control-row">
-                <label>Thickness</label>
-                <input type="number" id="prop-thickness" value="2" min="0" max="20" step="0.5">
-            </div>
-
-            <div class="control-row">
-                <label>Vertex Size</label>
-                <input type="number" id="prop-vsize" value="1.5" min="0.1" max="10" step="0.1">
-            </div>
-            
-            <div class="btn-row">
-                <button id="undo-point" style="background:#777; font-size:0.75rem;">Undo Last Point</button>
-                <button id="clear-points" style="background:#888; font-size:0.75rem;">Clear Points</button>
+            <div class="section">
+                <h3>Keyframes</h3>
+                <div id="keyframe-list"></div>
+                <button class="primary" id="add-keyframe">+ Add Keyframe</button>
             </div>
         </div>
 
-        <div class="section">
-            <h3>Keyframes</h3>
-            <div id="keyframe-list"></div>
-            <button class="primary" id="add-keyframe">+ Add Keyframe</button>
+        <div id="tab-info" class="tab-panel">
+            <div class="section">
+                <label for="meta-title">Title</label>
+                <input type="text" id="meta-title" value="Il Giardino Ducale">
+                <label for="meta-artist">Artist / Author</label>
+                <input type="text" id="meta-artist" value="Guido Carmignani">
+                <label for="meta-lang">Language (ISO code)</label>
+                <input type="text" id="meta-lang" value="it" placeholder="it, en, fr...">
+                <label for="meta-desc">Description</label>
+                <textarea id="meta-desc" rows="4" placeholder="Audioguide description or notes..."></textarea>
+            </div>
         </div>
 
-        <div class="btn-row" style="margin-top: auto">
+        <div id="tab-media" class="tab-panel">
+            <div class="section">
+                <p class="hint">Add background images, videos, or 3D models (.glb/.gltf) along the timeline.</p>
+                <div id="media-cue-list"></div>
+                <div class="btn-row">
+                    <button id="add-media-img" style="background:var(--primary)">+ Image</button>
+                    <button id="add-media-vid" style="background:#4b6b88">+ Video</button>
+                    <button id="add-media-3d" style="background:#5a4b88">+ 3D Model</button>
+                </div>
+                <input type="file" id="media-file-picker" style="display:none">
+            </div>
+        </div>
+
+        <div id="tab-audio" class="tab-panel">
+            <div class="section">
+                <p class="hint">Layer or sequence multiple audio sources on the timeline, then mix or export.</p>
+                <div id="audio-track-list"></div>
+                <div class="btn-row" style="margin-bottom:8px;">
+                    <button id="add-audio-track" style="background:var(--primary)">+ Add Audio Source</button>
+                    <button id="mix-export-wav" style="background:#2d6a4f">Mix &amp; Export WAV</button>
+                </div>
+                <input type="file" id="audio-file-picker" accept="audio/*" style="display:none">
+            </div>
+        </div>
+
+        <div class="btn-row" style="margin-top: auto; flex-wrap: wrap;">
             <button id="load-default-json" style="background:#555">Load Default</button>
             <button id="import-json" style="background:#555">Import JSON</button>
-            <button id="export-json" class="primary" style="background:#333; margin-top: 0">Export JSON</button>
+            <button id="export-project" class="primary" style="background:var(--primary); margin-top: 0">Export Project</button>
+            <button id="export-json" class="primary" style="background:#333; margin-top: 0">Export Annotations</button>
         </div>
         <input type="file" id="import-file" accept=".json,application/json" style="display:none">
     </div>
@@ -133,14 +200,30 @@
         let selectedIdx = -1;
         let isDragging = false;
         let draggingPointIdx = -1;
+        let mediaCues = [
+            { id: 'cue-1', type: 'image', label: 'Default Artwork', src: 'carmignano.png', start: 0, end: 120, muted: true, autoRotate: true }
+        ];
+        let audioTracks = [
+            { id: 'track-1', name: 'Main Narration', src: 'demo.mp3', start: 0, trimStart: 0, duration: 0, volume: 1, el: null }
+        ];
+        let activeCueKey = '';
+        let activeMediaType = 'image';
 
-        const bg = document.getElementById('artwork-image-bg'), fg = document.getElementById('artwork-image-fg'), svg = document.getElementById('annotation-layer'), list = document.getElementById('keyframe-list'), viewport = document.getElementById('viewport-container'), stage = document.getElementById('artwork-stage');
+        const bg = document.getElementById('artwork-image-bg'), fg = document.getElementById('artwork-image-fg'), bgVid = document.getElementById('artwork-video-bg'), fgVid = document.getElementById('artwork-video-fg'), model3d = document.getElementById('artwork-model-3d'), svg = document.getElementById('annotation-layer'), list = document.getElementById('keyframe-list'), viewport = document.getElementById('viewport-container'), stage = document.getElementById('artwork-stage');
         let stageAspect = 1;
 
         function fitStage() {
             const cw = viewport.clientWidth, ch = viewport.clientHeight;
-            const natW = bg.naturalWidth, natH = bg.naturalHeight;
-            if (!cw || !ch || !natW || !natH) return;
+            if (!cw || !ch) return;
+            if (activeMediaType === 'model3d') {
+                stage.style.width = `${cw}px`;
+                stage.style.height = `${ch}px`;
+                stageAspect = cw / ch;
+                return;
+            }
+            const natW = activeMediaType === 'video' ? bgVid.videoWidth : bg.naturalWidth;
+            const natH = activeMediaType === 'video' ? bgVid.videoHeight : bg.naturalHeight;
+            if (!natW || !natH) return;
             const scale = Math.min(cw / natW, ch / natH);
             const fw = natW * scale, fh = natH * scale;
             stage.style.width = `${fw}px`;
@@ -149,7 +232,18 @@
         }
         new ResizeObserver(fitStage).observe(viewport);
         bg.addEventListener('load', fitStage);
+        bgVid.addEventListener('loadedmetadata', fitStage);
         fitStage();
+
+        // Tab Switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+            };
+        });
         const propUI = { type: document.getElementById('prop-type'), effect: document.getElementById('prop-effect'), color: document.getElementById('prop-color'), alpha: document.getElementById('prop-alpha'), thickness: document.getElementById('prop-thickness'), vSize: document.getElementById('prop-vsize') };
 
         const player = new Player({ container: () => document.querySelector("#player"), audio: { src: "demo.mp3" } });
@@ -298,9 +392,64 @@
 
         const lerp = (a, b, t) => a + (b - a) * t;
         const ease = (t, type) => (type === 'ease-in') ? t*t : (type === 'ease-out') ? t*(2-t) : t;
+
+        function syncMediaAtTime(t, isPaused) {
+            const matches = mediaCues.filter(c => t >= (c.start ?? 0) && t <= (c.end ?? Infinity));
+            const cue = matches.length > 0 ? matches[matches.length - 1] : null;
+            const key = cue ? `${cue.type}:${cue.src}:${cue.start}` : 'default';
+            if (key !== activeCueKey) {
+                activeCueKey = key;
+                const type = cue ? cue.type : 'image';
+                const src = cue ? cue.src : 'carmignano.png';
+                activeMediaType = type;
+                bg.classList.toggle('hidden', type !== 'image');
+                fg.classList.toggle('hidden', type !== 'image');
+                bgVid.classList.toggle('hidden', type !== 'video');
+                fgVid.classList.toggle('hidden', type !== 'video');
+                model3d.classList.toggle('hidden', type !== 'model3d');
+                svg.classList.toggle('hidden', type === 'model3d');
+                if (type === 'image' && src && bg.getAttribute('src') !== src) {
+                    bg.src = fg.src = src;
+                } else if (type === 'video' && src && bgVid.getAttribute('src') !== src) {
+                    bgVid.src = fgVid.src = src;
+                    bgVid.muted = cue.muted !== false;
+                    fgVid.muted = true;
+                } else if (type === 'model3d' && src) {
+                    if (model3d.getAttribute('src') !== src) model3d.src = src;
+                    if (cue.autoRotate === false) model3d.removeAttribute('auto-rotate');
+                    else model3d.setAttribute('auto-rotate', '');
+                }
+                fitStage();
+            }
+            if (activeMediaType === 'video') {
+                const vidTime = cue ? Math.max(0, t - (cue.start ?? 0)) : t;
+                if (Math.abs(bgVid.currentTime - vidTime) > 0.3) bgVid.currentTime = fgVid.currentTime = vidTime;
+                if (isPaused) { bgVid.pause(); fgVid.pause(); } else { bgVid.play().catch(()=>{}); fgVid.play().catch(()=>{}); }
+            }
+        }
+
+        function syncExtraAudio(t, isPaused) {
+            audioTracks.slice(1).forEach(tr => {
+                if (!tr.el || !tr.src) return;
+                const dur = tr.duration > 0 ? tr.duration : (tr.el.duration || 0);
+                const inRange = t >= tr.start && (dur <= 0 || t <= tr.start + dur);
+                if (inRange && !isPaused) {
+                    const targetT = (tr.trimStart || 0) + (t - tr.start);
+                    if (Math.abs(tr.el.currentTime - targetT) > 0.35) tr.el.currentTime = targetT;
+                    tr.el.volume = tr.volume ?? 1;
+                    if (tr.el.paused) tr.el.play().catch(()=>{});
+                } else if (!tr.el.paused) {
+                    tr.el.pause();
+                }
+            });
+        }
+
         setInterval(() => {
-            if (player.audio && !player.audio.paused && activeKeyframes.length > 1 && !isDragging) {
-                const t = player.currentTime;
+            const t = player.currentTime || 0;
+            const isPaused = !(player.audio && !player.audio.paused);
+            syncMediaAtTime(t, isPaused);
+            syncExtraAudio(t, isPaused);
+            if (!isPaused && activeKeyframes.length > 1 && !isDragging) {
                 let k1 = null, k2 = null;
                 for(let i=0; i<activeKeyframes.length-1; i++) {
                     if (t >= activeKeyframes[i].time && t <= activeKeyframes[i+1].time) { k1 = activeKeyframes[i]; k2 = activeKeyframes[i+1]; break; }
@@ -322,7 +471,203 @@
             }
         }, 33);
 
+        // Media Cues UI
+        const mediaList = document.getElementById('media-cue-list');
+        const mediaPicker = document.getElementById('media-file-picker');
+        let pendingMediaIdx = -1;
+
+        function renderMediaCues() {
+            mediaList.innerHTML = '';
+            mediaCues.forEach((cue, i) => {
+                const card = document.createElement('div');
+                card.className = 'cue-card';
+                card.innerHTML = `
+                    <div class="cue-card-head">
+                        <span>${cue.type.toUpperCase()}: ${cue.label || 'Untitled'}</span>
+                        <div style="display:flex;gap:4px;">
+                            <button type="button" class="cue-jump" style="background:#555;padding:4px 8px;min-height:28px;font-size:0.7rem;">Preview</button>
+                            <button type="button" class="cue-file" style="background:#4b6b88;padding:4px 8px;min-height:28px;font-size:0.7rem;">File</button>
+                            <button type="button" class="cue-del" style="background:#ff4747;padding:4px 8px;min-height:28px;font-size:0.7rem;">×</button>
+                        </div>
+                    </div>
+                    <div class="cue-grid">
+                        <div><label>Label</label><input type="text" class="c-label" value="${cue.label || ''}"></div>
+                        <div><label>Type</label><select class="c-type"><option value="image" ${cue.type==='image'?'selected':''}>Image</option><option value="video" ${cue.type==='video'?'selected':''}>Video</option><option value="model3d" ${cue.type==='model3d'?'selected':''}>3D Model</option></select></div>
+                        <div><label>Start (s)</label><input type="number" step="0.1" class="c-start" value="${cue.start ?? 0}"></div>
+                        <div><label>End (s)</label><input type="number" step="0.1" class="c-end" value="${cue.end ?? 60}"></div>
+                    </div>
+                    <div style="margin-top:6px;"><label style="font-size:0.65rem;color:#666;">Source URL / Filename</label><input type="text" class="c-src" value="${cue.src || ''}" placeholder="image.jpg, clip.mp4, model.glb"></div>
+                    ${cue.type === 'video' ? `<label class="inline-check"><input type="checkbox" class="c-muted" ${cue.muted !== false ? 'checked' : ''}> Mute video</label>` : ''}
+                    ${cue.type === 'model3d' ? `<label class="inline-check"><input type="checkbox" class="c-rot" ${cue.autoRotate !== false ? 'checked' : ''}> Auto-rotate 3D model</label>` : ''}
+                `;
+                card.querySelector('.c-label').onchange = e => { cue.label = e.target.value; renderMediaCues(); };
+                card.querySelector('.c-type').onchange = e => { cue.type = e.target.value; activeCueKey = ''; renderMediaCues(); };
+                card.querySelector('.c-start').onchange = e => { cue.start = parseFloat(e.target.value) || 0; activeCueKey = ''; };
+                card.querySelector('.c-end').onchange = e => { cue.end = parseFloat(e.target.value) || 0; activeCueKey = ''; };
+                card.querySelector('.c-src').onchange = e => { cue.src = e.target.value; activeCueKey = ''; };
+                const mutedCb = card.querySelector('.c-muted');
+                if (mutedCb) mutedCb.onchange = e => { cue.muted = e.target.checked; activeCueKey = ''; };
+                const rotCb = card.querySelector('.c-rot');
+                if (rotCb) rotCb.onchange = e => { cue.autoRotate = e.target.checked; activeCueKey = ''; };
+                card.querySelector('.cue-jump').onclick = () => { player.seek(cue.start || 0); activeCueKey = ''; syncMediaAtTime(cue.start || 0, true); };
+                card.querySelector('.cue-file').onclick = () => {
+                    pendingMediaIdx = i;
+                    mediaPicker.accept = cue.type === 'image' ? 'image/*' : cue.type === 'video' ? 'video/*' : '.glb,.gltf';
+                    mediaPicker.click();
+                };
+                card.querySelector('.cue-del').onclick = () => { mediaCues.splice(i, 1); activeCueKey = ''; renderMediaCues(); };
+                mediaList.appendChild(card);
+            });
+        }
+
+        mediaPicker.onchange = e => {
+            const file = e.target.files[0];
+            if (!file || pendingMediaIdx < 0) return;
+            mediaCues[pendingMediaIdx].src = URL.createObjectURL(file);
+            if (!mediaCues[pendingMediaIdx].label) mediaCues[pendingMediaIdx].label = file.name;
+            activeCueKey = '';
+            renderMediaCues();
+            mediaPicker.value = '';
+        };
+
+        function addMediaCue(type) {
+            const t = parseFloat((player.currentTime || 0).toFixed(1));
+            mediaCues.push({ id: `cue-${Date.now()}`, type, label: `New ${type}`, src: '', start: t, end: t + 15, muted: true, autoRotate: true });
+            renderMediaCues();
+        }
+        document.getElementById('add-media-img').onclick = () => addMediaCue('image');
+        document.getElementById('add-media-vid').onclick = () => addMediaCue('video');
+        document.getElementById('add-media-3d').onclick = () => addMediaCue('model3d');
+
+        // Audio Tracks UI & WAV Mixer
+        const audioList = document.getElementById('audio-track-list');
+        const audioPicker = document.getElementById('audio-file-picker');
+        let pendingAudioIdx = -1;
+
+        function renderAudioTracks() {
+            audioList.innerHTML = '';
+            audioTracks.forEach((tr, i) => {
+                if (i > 0 && !tr.el && tr.src) { tr.el = new Audio(tr.src); tr.el.preload = 'auto'; }
+                const card = document.createElement('div');
+                card.className = 'cue-card';
+                card.innerHTML = `
+                    <div class="cue-card-head">
+                        <span>Track ${i + 1}: ${tr.name || 'Audio'}</span>
+                        <div style="display:flex;gap:4px;">
+                            <button type="button" class="tr-file" style="background:#4b6b88;padding:4px 8px;min-height:28px;font-size:0.7rem;">File</button>
+                            ${i > 0 ? '<button type="button" class="tr-del" style="background:#ff4747;padding:4px 8px;min-height:28px;font-size:0.7rem;">×</button>' : ''}
+                        </div>
+                    </div>
+                    <div class="cue-grid">
+                        <div><label>Name</label><input type="text" class="t-name" value="${tr.name || ''}"></div>
+                        <div><label>Volume (0-1)</label><input type="number" step="0.1" min="0" max="1" class="t-vol" value="${tr.volume ?? 1}"></div>
+                        <div><label>Start (s)</label><input type="number" step="0.1" min="0" class="t-start" value="${tr.start ?? 0}"></div>
+                        <div><label>Trim Start (s)</label><input type="number" step="0.1" min="0" class="t-trim" value="${tr.trimStart ?? 0}"></div>
+                    </div>
+                    <div style="margin-top:6px;"><label style="font-size:0.65rem;color:#666;">Audio Source URL / File</label><input type="text" class="t-src" value="${tr.src || ''}" placeholder="narration.mp3"></div>
+                `;
+                card.querySelector('.t-name').onchange = e => { tr.name = e.target.value; renderAudioTracks(); };
+                card.querySelector('.t-vol').onchange = e => { tr.volume = Math.max(0, Math.min(1, parseFloat(e.target.value) || 0)); };
+                card.querySelector('.t-start').onchange = e => { tr.start = Math.max(0, parseFloat(e.target.value) || 0); };
+                card.querySelector('.t-trim').onchange = e => { tr.trimStart = Math.max(0, parseFloat(e.target.value) || 0); };
+                card.querySelector('.t-src').onchange = e => {
+                    tr.src = e.target.value;
+                    if (i === 0 && player.audio) { player.audio.src = tr.src; }
+                    else if (tr.src) { tr.el = new Audio(tr.src); tr.el.preload = 'auto'; }
+                };
+                card.querySelector('.tr-file').onclick = () => { pendingAudioIdx = i; audioPicker.click(); };
+                const delBtn = card.querySelector('.tr-del');
+                if (delBtn) delBtn.onclick = () => { if (tr.el) tr.el.pause(); audioTracks.splice(i, 1); renderAudioTracks(); };
+                audioList.appendChild(card);
+            });
+        }
+
+        audioPicker.onchange = e => {
+            const file = e.target.files[0];
+            if (!file || pendingAudioIdx < 0) return;
+            const url = URL.createObjectURL(file);
+            const tr = audioTracks[pendingAudioIdx];
+            tr.src = url;
+            tr.name = file.name;
+            if (pendingAudioIdx === 0 && player.audio) player.audio.src = url;
+            else { tr.el = new Audio(url); tr.el.preload = 'auto'; }
+            renderAudioTracks();
+            audioPicker.value = '';
+        };
+
+        document.getElementById('add-audio-track').onclick = () => {
+            audioTracks.push({ id: `track-${Date.now()}`, name: `Clip ${audioTracks.length + 1}`, src: '', start: parseFloat((player.currentTime || 0).toFixed(1)), trimStart: 0, duration: 0, volume: 0.8, el: null });
+            renderAudioTracks();
+        };
+
+        function encodeWav(buffer) {
+            const numCh = buffer.numberOfChannels, sr = buffer.sampleRate, len = buffer.length * numCh * 2;
+            const ab = new ArrayBuffer(44 + len), v = new DataView(ab);
+            const ws = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+            ws(0, 'RIFF'); v.setUint32(4, 36 + len, true); ws(8, 'WAVE'); ws(12, 'fmt ');
+            v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, numCh, true);
+            v.setUint32(24, sr, true); v.setUint32(28, sr * numCh * 2, true);
+            v.setUint16(32, numCh * 2, true); v.setUint16(34, 16, true);
+            ws(36, 'data'); v.setUint32(40, len, true);
+            let off = 44;
+            for (let i = 0; i < buffer.length; i++) {
+                for (let ch = 0; ch < numCh; ch++) {
+                    const s = Math.max(-1, Math.min(1, buffer.getChannelData(ch)[i]));
+                    v.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+                    off += 2;
+                }
+            }
+            return new Blob([ab], { type: 'audio/wav' });
+        }
+
+        document.getElementById('mix-export-wav').onclick = async () => {
+            const valid = audioTracks.filter(t => t.src);
+            if (valid.length === 0) return alert('Add at least one audio source!');
+            try {
+                const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const decoded = await Promise.all(valid.map(async tr => {
+                    const res = await fetch(tr.src);
+                    const buf = await tempCtx.decodeAudioData(await res.arrayBuffer());
+                    return { tr, buf };
+                }));
+                const sr = decoded[0].buf.sampleRate;
+                const totalSec = Math.max(...decoded.map(d => (d.tr.start || 0) + Math.max(0, d.buf.duration - (d.tr.trimStart || 0))));
+                const offCtx = new OfflineAudioContext(2, Math.ceil(totalSec * sr), sr);
+                decoded.forEach(({ tr, buf }) => {
+                    const src = offCtx.createBufferSource();
+                    src.buffer = buf;
+                    const gain = offCtx.createGain();
+                    gain.gain.value = tr.volume ?? 1;
+                    src.connect(gain).connect(offCtx.destination);
+                    src.start(tr.start || 0, tr.trimStart || 0);
+                });
+                const rendered = await offCtx.startRendering();
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(encodeWav(rendered));
+                a.download = 'audioguide-mix.wav';
+                a.click();
+                tempCtx.close();
+            } catch (err) {
+                alert('Could not mix audio (check CORS or audio format): ' + err.message);
+            }
+        };
+
         function loadAnnotationsData(data) {
+            if (data && !Array.isArray(data) && typeof data === 'object') {
+                if (data.metadata) {
+                    document.getElementById('meta-title').value = data.metadata.title || '';
+                    document.getElementById('meta-artist').value = data.metadata.artist || '';
+                    document.getElementById('meta-lang').value = data.metadata.language || 'it';
+                    document.getElementById('meta-desc').value = data.metadata.description || '';
+                }
+                if (Array.isArray(data.mediaCues)) { mediaCues = data.mediaCues; activeCueKey = ''; renderMediaCues(); }
+                if (Array.isArray(data.audioTracks) && data.audioTracks.length > 0) {
+                    audioTracks = data.audioTracks.map(t => ({ ...t, el: null }));
+                    if (audioTracks[0].src && player.audio) player.audio.src = audioTracks[0].src;
+                    renderAudioTracks();
+                }
+                data = data.annotations || [];
+            }
             const raw = Array.isArray(data) && data.length > 0 && data[0].keyframes ? data[0].keyframes : Array.isArray(data) ? data : [];
             activeKeyframes = raw.map(k => ({
                 time: k.time ?? 0, x: k.x ?? 50, y: k.y ?? 50, zoom: k.zoom ?? 1,
@@ -337,10 +682,11 @@
 
         document.getElementById('load-default-json').onclick = async () => {
             try {
-                const res = await fetch('annotations.json');
-                if (!res.ok) return alert('Could not load annotations.json');
+                let res = await fetch('audioguide.json');
+                if (!res.ok) res = await fetch('annotations.json');
+                if (!res.ok) return alert('Could not load audioguide.json or annotations.json');
                 loadAnnotationsData(await res.json());
-            } catch (e) { alert('Error loading annotations.json'); }
+            } catch (e) { alert('Error loading default project'); }
         };
 
         const importInput = document.getElementById('import-file');
@@ -353,11 +699,31 @@
             importInput.value = '';
         };
 
+        document.getElementById('export-project').onclick = () => {
+            const project = {
+                version: 1,
+                metadata: {
+                    title: document.getElementById('meta-title').value,
+                    artist: document.getElementById('meta-artist').value,
+                    language: document.getElementById('meta-lang').value,
+                    description: document.getElementById('meta-desc').value
+                },
+                audioTracks: audioTracks.map(({ el, ...rest }) => rest),
+                mediaCues,
+                annotations: [{ keyframes: activeKeyframes }]
+            };
+            const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'audioguide.json'; a.click();
+        };
+
         document.getElementById('export-json').onclick = () => {
             if (activeKeyframes.length === 0) return alert("Add keyframes!");
             const blob = new Blob([JSON.stringify([{ keyframes: activeKeyframes }], null, 2)], { type: 'application/json' });
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'annotations.json'; a.click();
         };
+
+        renderMediaCues();
+        renderAudioTracks();
     </script>
 </body>
 </html>

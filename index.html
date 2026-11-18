@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Audioguida | E-MUSE</title>
     <link rel="stylesheet" href="shinkwasa.css" />
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
     <style>
       :root {
         --primary-color: #954747;
@@ -70,6 +71,7 @@
 
       #artwork-image-bg, #artwork-video-bg { z-index: 10; }
       #artwork-image-fg, #artwork-video-fg { z-index: 20; }
+      #artwork-model-3d { z-index: 25; background: radial-gradient(circle, #222 0%, #000 100%); }
 
       #annotation-layer {
         position: absolute;
@@ -181,6 +183,9 @@
           <video id="artwork-video-bg" class="artwork-layer hidden" muted loop playsinline aria-label="Video Background"></video>
           <video id="artwork-video-fg" class="artwork-layer hidden" muted loop playsinline aria-hidden="true"></video>
 
+          <!-- 3D Model Layer -->
+          <model-viewer id="artwork-model-3d" class="artwork-layer hidden" camera-controls auto-rotate shadow-intensity="1" aria-label="3D Artwork Model"></model-viewer>
+
           <svg id="annotation-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
         </div>
 
@@ -215,10 +220,15 @@
         const artworkFgImg = document.getElementById('artwork-image-fg');
         const artworkBgVid = document.getElementById('artwork-video-bg');
         const artworkFgVid = document.getElementById('artwork-video-fg');
+        const artworkModel3d = document.getElementById('artwork-model-3d');
         const annotationLayer = document.getElementById('annotation-layer');
 
         let displayMode = 'subtitles'; // 'subtitles' or 'transcript'
         let annotations = [];
+        let mediaCues = [];
+        let extraAudioTracks = [];
+        let activeCueKey = '';
+        let activeMediaType = 'image';
         let timingData = null;
         let isVideoMode = false;
         let lastActiveWord = null;
@@ -228,9 +238,16 @@
         function fitStage() {
           const cw = imageContainer.clientWidth;
           const ch = imageContainer.clientHeight;
+          if (!cw || !ch) return;
+          if (activeMediaType === 'model3d') {
+            artworkStage.style.width = `${cw}px`;
+            artworkStage.style.height = `${ch}px`;
+            stageAspect = cw / ch;
+            return;
+          }
           const natW = isVideoMode ? artworkBgVid.videoWidth : artworkBgImg.naturalWidth;
           const natH = isVideoMode ? artworkBgVid.videoHeight : artworkBgImg.naturalHeight;
-          if (!cw || !ch || !natW || !natH) return;
+          if (!natW || !natH) return;
           const scale = Math.min(cw / natW, ch / natH);
           const fw = natW * scale;
           const fh = natH * scale;
@@ -305,11 +322,59 @@
             }
           }
 
-          // 2. Video Sync
-          if (isVideoMode) {
-            if (Math.abs(artworkBgVid.currentTime - currentTime) > 0.3) artworkBgVid.currentTime = artworkFgVid.currentTime = currentTime;
-            if (player.audio && player.audio.paused) { artworkBgVid.pause(); artworkFgVid.pause(); } else { artworkBgVid.play(); artworkFgVid.play(); }
+          // 2. Media Cues & Video/3D Sync
+          const isPaused = !!(player.audio && player.audio.paused);
+          if (mediaCues.length > 0) {
+            const matches = mediaCues.filter(c => currentTime >= (c.start ?? 0) && currentTime <= (c.end ?? Infinity));
+            const cue = matches.length > 0 ? matches[matches.length - 1] : null;
+            const key = cue ? `${cue.type}:${cue.src}:${cue.start}` : 'default';
+            if (key !== activeCueKey) {
+              activeCueKey = key;
+              const type = cue ? cue.type : 'image';
+              const src = cue ? cue.src : 'carmignano.png';
+              activeMediaType = type;
+              isVideoMode = (type === 'video');
+              artworkBgImg.classList.toggle('hidden', type !== 'image');
+              artworkFgImg.classList.toggle('hidden', type !== 'image');
+              artworkBgVid.classList.toggle('hidden', type !== 'video');
+              artworkFgVid.classList.toggle('hidden', type !== 'video');
+              artworkModel3d.classList.toggle('hidden', type !== 'model3d');
+              annotationLayer.classList.toggle('hidden', type === 'model3d');
+              if (type === 'image' && artworkBgImg.getAttribute('src') !== src) {
+                artworkBgImg.src = artworkFgImg.src = src;
+              } else if (type === 'video' && artworkBgVid.getAttribute('src') !== src) {
+                artworkBgVid.src = artworkFgVid.src = src;
+                artworkBgVid.muted = cue.muted !== false;
+                artworkFgVid.muted = true;
+              } else if (type === 'model3d') {
+                if (artworkModel3d.getAttribute('src') !== src) artworkModel3d.src = src;
+                if (cue.autoRotate === false) artworkModel3d.removeAttribute('auto-rotate');
+                else artworkModel3d.setAttribute('auto-rotate', '');
+              }
+              fitStage();
+            }
           }
+
+          if (isVideoMode) {
+            const activeVidCue = mediaCues.filter(c => c.type === 'video' && currentTime >= (c.start ?? 0) && currentTime <= (c.end ?? Infinity)).pop();
+            const vidTime = activeVidCue ? Math.max(0, currentTime - (activeVidCue.start ?? 0)) : currentTime;
+            if (Math.abs(artworkBgVid.currentTime - vidTime) > 0.3) artworkBgVid.currentTime = artworkFgVid.currentTime = vidTime;
+            if (isPaused) { artworkBgVid.pause(); artworkFgVid.pause(); } else { artworkBgVid.play().catch(()=>{}); artworkFgVid.play().catch(()=>{}); }
+          }
+
+          // 2b. Extra Audio Tracks Sync
+          extraAudioTracks.forEach(tr => {
+            const dur = tr.duration > 0 ? tr.duration : (tr.el.duration || 0);
+            const inRange = currentTime >= tr.start && (dur <= 0 || currentTime <= tr.start + dur);
+            if (inRange && !isPaused) {
+              const targetT = (tr.trimStart || 0) + (currentTime - tr.start);
+              if (Math.abs(tr.el.currentTime - targetT) > 0.35) tr.el.currentTime = targetT;
+              tr.el.volume = tr.volume ?? 1;
+              if (tr.el.paused) tr.el.play().catch(()=>{});
+            } else if (!tr.el.paused) {
+              tr.el.pause();
+            }
+          });
 
           // 3. Annotations
           let activeState = null;
@@ -434,27 +499,64 @@
               points: Array.isArray(k.points) ? k.points : []
             });
 
-            console.log('Fetching annotations.json...');
-            const aRes = await fetch('annotations.json');
-            if (aRes.ok) {
-              const data = await aRes.json();
-              // Normalize: always an array of objects with keyframes
-              if (Array.isArray(data) && data.length > 0 && data[0].time !== undefined) {
-                annotations = [{ keyframes: data.map(normalizeKf) }];
-              } else if (Array.isArray(data)) {
-                annotations = data.map(anno => ({ ...anno, keyframes: (anno.keyframes || []).map(normalizeKf) }));
+            const projectUrl = new URLSearchParams(window.location.search).get('project') || 'audioguide.json';
+            const pRes = await fetch(projectUrl).catch(() => ({ ok: false }));
+            let projectData = null;
+            if (pRes.ok) {
+              projectData = await pRes.json();
+              if (projectData.metadata) {
+                const m = projectData.metadata;
+                if (m.title) {
+                  document.getElementById('artwork-title').textContent = m.title;
+                  document.title = `${m.title} | E-MUSE`;
+                }
+                if (m.artist) document.getElementById('artwork-artist').textContent = m.artist;
+                if (m.language) document.documentElement.lang = m.language;
               }
-              console.log('Annotations loaded & normalized:', annotations.length);
-              window.annotations = annotations;
+              if (Array.isArray(projectData.mediaCues)) {
+                mediaCues = projectData.mediaCues;
+              }
+              if (Array.isArray(projectData.audioTracks) && projectData.audioTracks.length > 0) {
+                const firstTrack = projectData.audioTracks[0];
+                if (firstTrack.src && player.audio && firstTrack.src !== 'demo.mp3') {
+                  player.audio.src = firstTrack.src;
+                }
+                extraAudioTracks = projectData.audioTracks.slice(1).map(tr => {
+                  const el = new Audio(tr.src);
+                  el.preload = 'auto';
+                  return { ...tr, el };
+                });
+              }
+              if (Array.isArray(projectData.annotations)) {
+                annotations = projectData.annotations.map(anno => ({ ...anno, keyframes: (anno.keyframes || []).map(normalizeKf) }));
+                window.annotations = annotations;
+              }
             }
 
-            const videoUrl = 'artwork.mp4'; 
-            const checkVid = await fetch(videoUrl, { method: 'HEAD' }).catch(() => ({ ok: false }));
-            if (checkVid.ok) {
-              isVideoMode = true;
-              artworkBgImg.classList.add('hidden'); artworkFgImg.classList.add('hidden');
-              artworkBgVid.classList.remove('hidden'); artworkFgVid.classList.remove('hidden');
-              artworkBgVid.src = artworkFgVid.src = videoUrl;
+            if (!projectData || !Array.isArray(projectData.annotations)) {
+              console.log('Fetching annotations.json...');
+              const aRes = await fetch('annotations.json');
+              if (aRes.ok) {
+                const data = await aRes.json();
+                if (Array.isArray(data) && data.length > 0 && data[0].time !== undefined) {
+                  annotations = [{ keyframes: data.map(normalizeKf) }];
+                } else if (Array.isArray(data)) {
+                  annotations = data.map(anno => ({ ...anno, keyframes: (anno.keyframes || []).map(normalizeKf) }));
+                }
+                console.log('Annotations loaded & normalized:', annotations.length);
+                window.annotations = annotations;
+              }
+            }
+
+            if (mediaCues.length === 0) {
+              const videoUrl = 'artwork.mp4';
+              const checkVid = await fetch(videoUrl, { method: 'HEAD' }).catch(() => ({ ok: false }));
+              if (checkVid.ok) {
+                isVideoMode = true;
+                artworkBgImg.classList.add('hidden'); artworkFgImg.classList.add('hidden');
+                artworkBgVid.classList.remove('hidden'); artworkFgVid.classList.remove('hidden');
+                artworkBgVid.src = artworkFgVid.src = videoUrl;
+              }
             }
           } catch (e) { console.error('Init Error:', e); }
         }
