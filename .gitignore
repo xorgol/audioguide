@@ -1,0 +1,9 @@
+node_modules/
+playwright-report/
+test-results/
+.DS_Store
+**/.DS_Store
+._*
+**/._*
+Icon*
+**/Icon*

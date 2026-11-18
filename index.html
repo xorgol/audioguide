@@ -14,26 +14,21 @@
         --dim-color: #888888;
       }
 
-      * {
-        box-sizing: border-box;
-      }
+      * { box-sizing: border-box; }
 
       body {
-        margin: 0;
-        padding: 0;
+        margin: 0; padding: 0;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        background-color: var(--bg-color);
-        color: var(--text-color);
-        display: flex;
-        flex-direction: column;
-        height: 100vh;
-        overflow: hidden;
+        background-color: var(--bg-color); color: var(--text-color);
+        display: flex; flex-direction: column; height: 100vh; overflow: hidden;
       }
 
       header {
         flex: 0 0 auto;
         padding: 1rem;
-        text-align: center;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         border-bottom: 1px solid #eee;
         z-index: 10;
         background: white;
@@ -43,64 +38,73 @@
         flex: 1 1 auto;
         display: flex;
         flex-direction: column;
-        overflow-y: auto;
+        overflow: hidden;
         min-height: 0;
       }
 
       .image-container {
-        flex: 0 0 auto;
-        max-height: 45vh;
+        position: relative;
+        flex: 1;
+        background-color: #000;
+        overflow: hidden;
         display: flex;
         justify-content: center;
         align-items: center;
-        padding: 0;
-        background-color: #f9f9f9;
-        overflow: hidden;
       }
 
-      #artwork-viewport {
-        position: relative;
+      .artwork-layer {
+        position: absolute;
         width: 100%;
         height: 100%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        overflow: hidden;
-      }
-
-      #artwork-image {
-        max-width: 100%;
-        max-height: 100%;
         object-fit: contain;
-        transition: transform 1.5s ease-in-out;
+        transition: transform 0.1s linear, filter 0.3s ease;
         transform-origin: center;
       }
 
+      #artwork-image-bg, #artwork-video-bg { z-index: 10; }
+      #artwork-image-fg, #artwork-video-fg { z-index: 20; }
+
       #annotation-layer {
         position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
         pointer-events: none;
-        z-index: 50;
+        z-index: 30;
       }
 
-      .marker-pulse {
-        animation: pulse 2s infinite;
+      #subtitle-overlay {
+        position: absolute;
+        bottom: 40px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 100;
+        width: 80%;
+        text-align: center;
+        pointer-events: none;
       }
 
-      @keyframes pulse {
-        0% { opacity: 0.4; stroke-width: 1; }
-        50% { opacity: 1; stroke-width: 3; }
-        100% { opacity: 0.4; stroke-width: 1; }
+      .subtitle-text {
+        font-size: 1.5rem;
+        font-weight: bold;
+        background: rgba(0,0,0,0.6);
+        color: white;
+        padding: 8px 20px;
+        border-radius: 8px;
+        display: inline-block;
+        line-height: 1.4;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.8);
       }
+
+      .subtitle-text span.active { color: var(--highlight-color); }
 
       #transcript {
         flex: 1 1 auto;
         padding: 1.5rem 2rem;
         font-size: 1.25rem;
         line-height: 1.6;
+        overflow-y: auto;
+        border-left: 1px solid #eee;
+        display: none; /* Hidden by default in Subtitle mode */
       }
 
       .word {
@@ -109,11 +113,6 @@
         border-radius: 3px;
         transition: background-color 0.2s, color 0.2s;
         color: var(--dim-color);
-      }
-
-      .word:hover {
-        background-color: #f0f0f0;
-        color: var(--text-color);
       }
 
       .word.active {
@@ -130,59 +129,59 @@
         z-index: 1000;
       }
 
-      @media (max-width: 767px) {
-        .image-container {
-          position: sticky;
-          top: 0;
-          z-index: 100;
-          box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-          height: 40vh;
-        }
+      .mode-toggle {
+        padding: 6px 12px;
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.8rem;
+        font-weight: bold;
       }
 
+      .hidden { display: none !important; }
+
       @media (min-width: 768px) {
-        main {
-          flex-direction: row;
-          flex-wrap: wrap;
-          overflow: hidden; 
-        }
-        header {
-          flex: 0 0 100%;
-        }
-        .image-container {
-          flex: 0 0 50%;
-          max-height: none;
-          height: calc(100% - 80px);
-        }
-        #transcript {
-          flex: 0 0 50%;
-          overflow-y: auto;
-          height: calc(100% - 80px);
-          border-left: 1px solid #eee;
-        }
+        main.transcript-active { flex-direction: row; }
+        main.transcript-active #transcript { display: block; flex: 0 0 40%; }
+        main.transcript-active .image-container { flex: 0 0 60%; }
+      }
+
+      @media (max-width: 767px) {
+        main.transcript-active #transcript { display: block; flex: 1; }
+        main.transcript-active .image-container { flex: 0 0 40vh; }
       }
     </style>
   </head>
   <body>
-    <main>
-      <header>
-        <h2 id="artwork-title">Il Giardino Ducale</h2>
-        <p id="artwork-artist" style="margin: 0; font-size: 0.9rem; color: #666;">Guido Carmignani (1878/1880)</p>
-      </header>
+    <header>
+      <div>
+        <h2 id="artwork-title" style="margin:0; font-size: 1.1rem;">Il Giardino Ducale</h2>
+        <p id="artwork-artist" style="margin: 0; font-size: 0.8rem; color: #666;">Guido Carmignani</p>
+      </div>
+      <button id="toggle-display" class="mode-toggle">Switch to Transcript</button>
+    </header>
 
+    <main id="main-content">
       <div class="image-container">
-        <div id="artwork-viewport">
-          <img id="artwork-image" src="carmignano.png" alt="Il Giardino Ducale alla metà del secolo XVIII" />
-          <svg id="annotation-layer" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+        <!-- Image Layers -->
+        <img id="artwork-image-bg" class="artwork-layer" src="carmignano.png" alt="Il Giardino Ducale - Background layer" />
+        <img id="artwork-image-fg" class="artwork-layer" src="carmignano.png" alt="Il Giardino Ducale - Focal layer" />
+
+        <!-- Video Layers -->
+        <video id="artwork-video-bg" class="artwork-layer hidden" muted loop playsinline aria-label="Video Background"></video>
+        <video id="artwork-video-fg" class="artwork-layer hidden" muted loop playsinline aria-label="Video Focal layer"></video>
+
+        <svg id="annotation-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
+
+        <div id="subtitle-overlay">
+          <div id="subtitle-container" class="subtitle-text"></div>
         </div>
       </div>
-      <div id="transcript">
-        <p style="font-size: 0.9rem; color: #999; margin-bottom: 1rem; font-style: italic;">
-          Tocca una parola per saltare a quel punto dell'audio.
-        </p>
-        <div id="transcript-content">
-          Caricamento trascrizione...
-        </div>
+
+      <div id="transcript" aria-label="Audio Transcript">
+        <div id="transcript-content">Caricamento trascrizione...</div>
       </div>
     </main>
 
@@ -194,163 +193,222 @@
       import { Player } from "./shinkwasa.js";
 
       document.addEventListener("DOMContentLoaded", async () => {
+        const main = document.getElementById('main-content');
+        const subOverlay = document.getElementById('subtitle-overlay');
+        const subContainer = document.getElementById('subtitle-container');
+        const transcriptPanel = document.getElementById('transcript');
         const transcriptContent = document.getElementById('transcript-content');
-        const artworkImage = document.getElementById('artwork-image');
+        const toggleBtn = document.getElementById('toggle-display');
+        
+        const artworkBgImg = document.getElementById('artwork-image-bg');
+        const artworkFgImg = document.getElementById('artwork-image-fg');
+        const artworkBgVid = document.getElementById('artwork-video-bg');
+        const artworkFgVid = document.getElementById('artwork-video-fg');
         const annotationLayer = document.getElementById('annotation-layer');
+
+        let displayMode = 'subtitles'; // 'subtitles' or 'transcript'
         let annotations = [];
+        let timingData = null;
+        let isVideoMode = false;
+        let lastActiveWord = null;
 
         const player = new Player({
           container: () => document.querySelector("#player"),
-          audio: {
-            title: "Il Giardino Ducale nel Secolo XVIII",
-            artist: "Carmignani Guido - 1878/1880",
-            cover: "carmignano.png",
-            src: "demo.mp3",
-          },
+          audio: { src: "demo.mp3", title: "E-MUSE Audioguide" },
           themeColor: "#954747",
         });
 
         window.player = player;
 
-        let lastActive = null;
-        let lastAnnotation = null;
+        // Toggle Display Mode
+        toggleBtn.onclick = () => {
+          if (displayMode === 'subtitles') {
+            displayMode = 'transcript';
+            toggleBtn.textContent = 'Switch to Subtitles';
+            main.classList.add('transcript-active');
+            subOverlay.classList.add('hidden');
+          } else {
+            displayMode = 'subtitles';
+            toggleBtn.textContent = 'Switch to Transcript';
+            main.classList.remove('transcript-active');
+            subOverlay.classList.remove('hidden');
+          }
+        };
 
         const lerp = (a, b, t) => a + (b - a) * t;
+        const ease = (t, type) => (type === 'ease-in') ? t*t : (type === 'ease-out') ? t*(2-t) : t;
 
-        const updateHighlight = (currentTime) => {
+        const updateUI = (currentTime) => {
           if (isNaN(currentTime)) return;
-          
-          // 1. Sync Transcript
-          const words = transcriptContent.querySelectorAll('.word');
-          for (let i = 0; i < words.length; i++) {
-            const word = words[i];
-            const start = parseFloat(word.dataset.start);
-            const end = parseFloat(word.dataset.end);
-            
-            if (currentTime >= start && currentTime <= end) {
-              if (lastActive !== word) {
-                if (lastActive) lastActive.classList.remove('active');
-                word.classList.add('active');
-                lastActive = word;
-                word.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              }
-              break;
-            }
-          }
 
-          // 2. Sync Dynamic Annotations (Keyframes)
-          let activeState = null;
-          
-          for (const anno of annotations) {
-            const keys = anno.keyframes;
-            if (!keys || keys.length === 0) continue;
+          // 1. Sync Subtitles / Transcript
+          if (timingData) {
+            const activeIdx = timingData.words.findIndex(w => currentTime >= w.start && currentTime <= w.end);
             
-            const start = keys[0].time;
-            const end = keys[keys.length - 1].time;
-            
-            if (currentTime >= start && currentTime <= end) {
-              // Find the two keyframes we are between
-              let k1 = keys[0], k2 = keys[0];
-              for (let i = 0; i < keys.length - 1; i++) {
-                if (currentTime >= keys[i].time && currentTime <= keys[i+1].time) {
-                  k1 = keys[i];
-                  k2 = keys[i+1];
-                  break;
+            if (displayMode === 'subtitles') {
+              if (activeIdx !== -1) {
+                const start = Math.max(0, activeIdx - 3);
+                const end = Math.min(timingData.words.length, activeIdx + 4);
+                subContainer.innerHTML = '';
+                timingData.words.slice(start, end).forEach(w => {
+                  const span = document.createElement('span');
+                  span.textContent = w.word + (w.word.endsWith("'") || w.word.endsWith("’") ? '' : ' ');
+                  if (currentTime >= w.start && currentTime <= w.end) span.className = 'active';
+                  subContainer.appendChild(span);
+                });
+              }
+            } else {
+              // Transcript mode
+              const words = transcriptContent.querySelectorAll('.word');
+              if (activeIdx !== -1 && words[activeIdx]) {
+                const activeWord = words[activeIdx];
+                if (lastActiveWord !== activeWord) {
+                  if (lastActiveWord) lastActiveWord.classList.remove('active');
+                  activeWord.classList.add('active');
+                  lastActiveWord = activeWord;
+                  activeWord.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
               }
-              
+            }
+          }
+
+          // 2. Video Sync
+          if (isVideoMode) {
+            if (Math.abs(artworkBgVid.currentTime - currentTime) > 0.3) artworkBgVid.currentTime = artworkFgVid.currentTime = currentTime;
+            if (player.paused) { artworkBgVid.pause(); artworkFgVid.pause(); } else { artworkBgVid.play(); artworkFgVid.play(); }
+          }
+
+          // 3. Annotations
+          let activeState = null;
+          for (const anno of annotations) {
+            const keys = anno.keyframes || anno; // Handle both structures
+            if (!Array.isArray(keys) || keys.length === 0) continue;
+            
+            const first = keys[0].time;
+            const last = keys[keys.length - 1].time;
+            
+            if (currentTime >= first && currentTime <= last) {
+              console.log('Active range found for time:', currentTime);
+              let k1 = keys[0], k2 = keys[0];
+              for (let i = 0; i < keys.length - 1; i++) {
+                if (currentTime >= keys[i].time && currentTime <= keys[i+1].time) { k1 = keys[i]; k2 = keys[i+1]; break; }
+              }
               const duration = k2.time - k1.time;
-              const alpha = duration > 0 ? (currentTime - k1.time) / duration : 1;
-              
+              const alpha = duration > 0 ? ease((currentTime - k1.time) / duration, k1.easing) : 1;
               activeState = {
-                type: anno.type,
-                color: anno.color,
-                thickness: anno.thickness,
-                x: lerp(k1.x, k2.x, alpha),
-                y: lerp(k1.y, k2.y, alpha),
-                zoom: lerp(k1.zoom, k2.zoom, alpha)
+                type: k1.type, color: k1.color, alpha: k1.alpha, thickness: k1.thickness, effect: k1.effect,
+                x: lerp(k1.x, k2.x, alpha), y: lerp(k1.y, k2.y, alpha), zoom: lerp(k1.zoom, k2.zoom, alpha)
               };
+              if (k1.type === 'polygon' && k1.points && k2.points && k1.points.length === k2.points.length) {
+                activeState.points = k1.points.map((p1, idx) => ({ x: lerp(p1.x, k2.points[idx].x, alpha), y: lerp(p1.y, k2.points[idx].y, alpha) }));
+              }
               break;
             }
           }
-          
-          renderAnnotation(activeState);
+          renderFrame(activeState);
         };
 
-        const renderAnnotation = (state) => {
-          annotationLayer.innerHTML = '';
-          if (!state) {
-            artworkImage.style.transform = `scale(1) translate(0, 0)`;
+        const renderFrame = (s) => {
+          if (!s) {
+            if (annotationLayer.innerHTML !== '') {
+                console.log('Clearing frame');
+                annotationLayer.innerHTML = '';
+                artworkBgImg.style.filter = 'none'; artworkFgImg.style.filter = 'none';
+                artworkBgImg.style.transform = artworkFgImg.style.transform = `scale(1) translate(0, 0)`;
+            }
             return;
           }
+          
+          console.log('Rendering frame at state:', s.x, s.y);
+          annotationLayer.innerHTML = '';
+          const bgLayer = isVideoMode ? artworkBgVid : artworkBgImg;
+          const fgLayer = isVideoMode ? artworkFgVid : artworkFgImg;
 
-          const zoom = state.zoom || 1;
-          const moveX = (50 - state.x) * zoom;
-          const moveY = (50 - state.y) * zoom;
-          artworkImage.style.transform = `scale(${zoom}) translate(${moveX}%, ${moveY}%)`;
+          const mx = (50 - s.x) * s.zoom, my = (50 - s.y) * s.zoom;
+          const trans = `scale(${s.zoom}) translate(${mx}%, ${my}%)`;
+          bgLayer.style.transform = fgLayer.style.transform = annotationLayer.style.transform = trans;
+          bgLayer.style.filter = s.effect === 'blur' ? 'blur(8px) brightness(0.8)' : s.effect === 'grayscale' ? 'grayscale(1) opacity(0.7)' : 'none';
 
-          const color = state.color || '#ffd700';
-          const thickness = state.thickness || 2;
+          if (s.type === 'polygon' && s.points && s.points.length > 2) fgLayer.style.clipPath = `polygon(${s.points.map(p=>`${p.x}% ${p.y}%`).join(', ')})`;
+          else if (s.type === 'circle') fgLayer.style.clipPath = `circle(10% at ${s.x}% ${s.y}%)`;
+          else fgLayer.style.clipPath = 'none';
 
-          if (state.type === 'circle') {
-            const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            circle.setAttribute("cx", state.x);
-            circle.setAttribute("cy", state.y);
-            circle.setAttribute("r", "5");
-            circle.setAttribute("fill", "none");
-            circle.setAttribute("stroke", color);
-            circle.setAttribute("stroke-width", thickness);
-            circle.classList.add('marker-pulse');
-            annotationLayer.appendChild(circle);
-          } else if (state.type === 'pointer') {
-            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-            line.setAttribute("x1", state.x + 3);
-            line.setAttribute("y1", state.y + 3);
-            line.setAttribute("x2", state.x);
-            line.setAttribute("y2", state.y);
-            line.setAttribute("stroke", color);
-            line.setAttribute("stroke-width", thickness);
-            annotationLayer.appendChild(line);
+          if (s.thickness > 0) {
+            const col = `rgba(${parseInt(s.color.slice(1,3),16)},${parseInt(s.color.slice(3,5),16)},${parseInt(s.color.slice(5,7),16)},${s.alpha})`;
+            if (s.type === 'circle') {
+              const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+              c.setAttribute("cx", s.x); c.setAttribute("cy", s.y); c.setAttribute("r", "5");
+              c.setAttribute("fill", "none"); c.setAttribute("stroke", col); c.setAttribute("stroke-width", s.thickness);
+              annotationLayer.appendChild(c);
+            } else if (s.type === 'pointer') {
+              const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+              l.setAttribute("x1", s.x + 3); l.setAttribute("y1", s.y + 3); l.setAttribute("x2", s.x); l.setAttribute("y2", s.y);
+              l.setAttribute("stroke", col); l.setAttribute("stroke-width", s.thickness);
+              annotationLayer.appendChild(l);
+            } else if (s.type === 'polygon' && s.points) {
+              const p = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+              p.setAttribute("points", s.points.map(pt=>`${pt.x},${pt.y}`).join(' '));
+              p.setAttribute("fill", "none"); p.setAttribute("stroke", col); p.setAttribute("stroke-width", s.thickness);
+              annotationLayer.appendChild(p);
+            }
           }
         };
 
-        // Increase polling frequency to 30fps for smooth animation
-        setInterval(() => {
-          if (window.player && !window.player.paused) {
-            updateHighlight(window.player.currentTime);
-          }
-        }, 33);
+        setInterval(() => { updateUI(player.currentTime); }, 33);
 
         async function init() {
           try {
-            const tResponse = await fetch('timing.json');
-            if (tResponse.ok) {
-              const data = await tResponse.json();
+            console.log('Fetching timing.json...');
+            const tRes = await fetch('timing.json');
+            if (tRes.ok) {
+              timingData = await tRes.json();
+              console.log('Timing data loaded:', timingData.words.length);
               transcriptContent.innerHTML = '';
               const p = document.createElement('p');
-              data.words.forEach((item) => {
+              timingData.words.forEach((w) => {
                 const span = document.createElement('span');
                 span.className = 'word';
-                span.dataset.start = item.start;
-                span.dataset.end = item.end;
-                const text = item.word;
-                const hasApostrophe = text.endsWith("'") || text.endsWith("’");
-                span.textContent = text + (hasApostrophe ? '' : ' ');
-                span.onclick = () => { player.seek(item.start); player.play(); };
+                span.dataset.start = w.start;
+                span.dataset.end = w.end;
+                span.textContent = w.word + (w.word.endsWith("'") || w.word.endsWith("’") ? '' : ' ');
+                span.onclick = async () => { 
+                    player.seek(w.start); 
+                    try { await player.play(); } catch(e) { console.log('Autoplay blocked:', e); }
+                };
                 p.appendChild(span);
               });
               transcriptContent.appendChild(p);
             }
-
-            const aResponse = await fetch('annotations.json');
-            if (aResponse.ok) {
-              annotations = await aResponse.json();
+            
+            console.log('Fetching annotations.json...');
+            const aRes = await fetch('annotations.json');
+            if (aRes.ok) {
+              const data = await aRes.json();
+              // Normalize: always an array of objects with keyframes
+              if (Array.isArray(data) && data.length > 0 && data[0].time !== undefined) {
+                annotations = [{ keyframes: data }];
+              } else {
+                annotations = data;
+              }
+              console.log('Annotations loaded & normalized:', annotations.length);
+              window.annotations = annotations;
             }
-          } catch (e) {
-            console.error('Init Error:', e);
-          }
+
+            const videoUrl = 'artwork.mp4'; 
+            const checkVid = await fetch(videoUrl, { method: 'HEAD' }).catch(() => ({ ok: false }));
+            if (checkVid.ok) {
+              isVideoMode = true;
+              artworkBgImg.classList.add('hidden'); artworkFgImg.classList.add('hidden');
+              artworkBgVid.classList.remove('hidden'); artworkFgVid.classList.remove('hidden');
+              artworkBgVid.src = artworkFgVid.src = videoUrl;
+            }
+          } catch (e) { console.error('Init Error:', e); }
         }
 
+        player.on('canplay', () => { 
+            console.log('Player can play');
+            window.player = player; 
+        });
         init();
       });
     </script>

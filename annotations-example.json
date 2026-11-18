@@ -1,0 +1,20 @@
+[
+  {
+    "type": "circle",
+    "color": "#ffd700",
+    "thickness": 3,
+    "keyframes": [
+      { "time": 10.0, "x": 20, "y": 30, "zoom": 1.5 },
+      { "time": 20.0, "x": 80, "y": 70, "zoom": 3.0 }
+    ]
+  },
+  {
+    "type": "pointer",
+    "color": "#ff4747",
+    "thickness": 2,
+    "keyframes": [
+      { "time": 30.0, "x": 50, "y": 50, "zoom": 1.0 },
+      { "time": 40.0, "x": 10, "y": 90, "zoom": 4.0 }
+    ]
+  }
+]
