@@ -658,7 +658,7 @@
             activeKeyframes.forEach((kf, i) => {
                 const item = document.createElement('div');
                 item.className = `keyframe-item ${i === selectedIdx ? 'selected' : ''}`;
-                item.onclick = (e) => { if(['INPUT','SELECT','BUTTON'].includes(e.target.tagName)) return; selectedIdx = i; Object.keys(propUI).forEach(k=>propUI[k].value=kf[k]); render(); };
+                item.onclick = (e) => { if(['INPUT','SELECT','BUTTON'].includes(e.target.tagName)) return; selectedIdx = i; Object.keys(propUI).forEach(k=>{ if(kf[k]!==undefined) propUI[k].value=kf[k]; }); player.seek(kf.time); render(); };
                 
                 const grid = document.createElement('div'); grid.className = 'kf-grid';
                 grid.innerHTML = `
@@ -681,18 +681,9 @@
                 item.appendChild(grid); item.appendChild(del); list.appendChild(item);
             });
 
-            // Canvas: show selected keyframe + any simultaneous annotations at that time
+            // Canvas: show state at playhead (cursor head)
             syncAnnoLayerUI();
-            if (selectedIdx === -1) {
-                drawAnnotation(null, false);
-            } else {
-                const refTime = activeKeyframes[selectedIdx].time;
-                const others = annotationTracks
-                    .filter((_, idx) => idx !== activeAnnoIdx)
-                    .map(tr => interpolateTrackAt(tr.keyframes, refTime))
-                    .filter(Boolean);
-                drawAnnotation([activeKeyframes[selectedIdx], ...others], true);
-            }
+            if (typeof renderAtPlayhead === 'function') renderAtPlayhead(player.currentTime || 0, true);
             if (typeof renderTimeline === 'function') renderTimeline();
         }
 
@@ -763,6 +754,30 @@
             textOverlay.textContent = cue.text;
         }
 
+        let lastPlayheadRenderT = -1;
+        function renderAtPlayhead(t, force) {
+            if (!force && Math.abs(t - lastPlayheadRenderT) < 0.001) return;
+            lastPlayheadRenderT = t;
+            const selKf = (selectedIdx !== -1 && activeKeyframes[selectedIdx]) ? activeKeyframes[selectedIdx] : null;
+            const showHandles = !!(selKf && Math.abs(t - selKf.time) <= 0.1);
+            const activeStates = [];
+            if (selKf && showHandles) {
+                activeStates.push(selKf);
+                annotationTracks.forEach((tr, idx) => {
+                    if (idx !== activeAnnoIdx) {
+                        const st = interpolateTrackAt(tr.keyframes, t);
+                        if (st) activeStates.push(st);
+                    }
+                });
+            } else {
+                annotationTracks.forEach(tr => {
+                    const st = interpolateTrackAt(tr.keyframes, t);
+                    if (st) activeStates.push(st);
+                });
+            }
+            drawAnnotation(activeStates, showHandles);
+        }
+
         setInterval(() => {
             const t = player.currentTime || 0;
             const isPaused = !(player.audio && !player.audio.paused);
@@ -770,9 +785,8 @@
             syncExtraAudio(t, isPaused);
             syncTextAtTime(t);
             if (typeof updatePlayhead === 'function') updatePlayhead(t);
-            if (!isPaused && !isDragging) {
-                const activeStates = annotationTracks.map(tr => interpolateTrackAt(tr.keyframes, t)).filter(Boolean);
-                drawAnnotation(activeStates, false);
+            if (!isDragging) {
+                renderAtPlayhead(t, !isPaused);
             }
         }, 33);
 
@@ -1352,6 +1366,9 @@
                 const t = Math.max(0, (clientX - rect.left) / pxPerSec);
                 player.seek(t);
                 updatePlayhead(t);
+                syncMediaAtTime(t, true);
+                syncTextAtTime(t);
+                renderAtPlayhead(t, true);
             };
             scrub(e.clientX);
             const move = (ev) => scrub(ev.clientX);
