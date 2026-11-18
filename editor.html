@@ -272,6 +272,7 @@
         let activeKeyframes = [];
         let selectedIdx = -1;
         let isDragging = false;
+        let isSizingCircle = false;
         let draggingPointIdx = -1;
         let mediaCues = [
             { id: 'cue-1', type: 'image', label: 'Default Artwork', src: 'carmignano.png', start: 0, end: 120, muted: true, autoRotate: true }
@@ -344,12 +345,18 @@
             };
         }
 
+        function circleDist(cx, cy, px, py) {
+            const dx = (px - cx) * Math.sqrt(stageAspect);
+            const dy = (py - cy) / Math.sqrt(stageAspect);
+            return parseFloat(Math.hypot(dx, dy).toFixed(1));
+        }
+
         viewport.onpointerdown = (e) => {
             const loc = getLocalCoords(e);
             if (selectedIdx === -1) {
                 const kf = {
                     time: parseFloat((player.currentTime || 0).toFixed(2)),
-                    x: loc.x, y: loc.y, zoom: 1.0,
+                    x: loc.x, y: loc.y, zoom: 1.0, radius: 5,
                     type: propUI.type.value, effect: propUI.effect.value,
                     color: propUI.color.value, alpha: parseFloat(propUI.alpha.value),
                     thickness: parseFloat(propUI.thickness.value), vSize: parseFloat(propUI.vSize.value),
@@ -360,6 +367,7 @@
                 activeKeyframes.sort((a, b) => a.time - b.time);
                 selectedIdx = activeKeyframes.indexOf(kf);
                 isDragging = true;
+                isSizingCircle = kf.type === 'circle';
                 draggingPointIdx = kf.type === 'polygon' ? 0 : -1;
                 render();
                 viewport.setPointerCapture(e.pointerId);
@@ -372,6 +380,15 @@
                 if (!kf.points) kf.points = [];
                 draggingPointIdx = kf.points.findIndex(p => Math.abs(p.x - loc.x) < hitRadius && Math.abs(p.y - loc.y) < hitRadius);
                 if (draggingPointIdx === -1) { kf.points.push(loc); draggingPointIdx = kf.points.length - 1; }
+            } else if (kf.type === 'circle') {
+                const dist = circleDist(kf.x, kf.y, loc.x, loc.y);
+                const curR = kf.radius ?? 5;
+                if (Math.abs(dist - curR) < (e.pointerType === 'touch' ? 5 : 2.5)) {
+                    isSizingCircle = true;
+                } else {
+                    isSizingCircle = false;
+                    kf.x = loc.x; kf.y = loc.y;
+                }
             } else { kf.x = loc.x; kf.y = loc.y; }
             render(); viewport.setPointerCapture(e.pointerId);
         };
@@ -379,10 +396,11 @@
             if (!isDragging || selectedIdx === -1) return;
             const loc = getLocalCoords(e), kf = activeKeyframes[selectedIdx];
             if (kf.type === 'polygon' && draggingPointIdx >= 0) kf.points[draggingPointIdx] = loc;
+            else if (kf.type === 'circle' && isSizingCircle) kf.radius = Math.max(1, circleDist(kf.x, kf.y, loc.x, loc.y));
             else { kf.x = loc.x; kf.y = loc.y; }
             render();
         };
-        const stopDragging = () => { isDragging = false; draggingPointIdx = -1; };
+        const stopDragging = () => { isDragging = false; isSizingCircle = false; draggingPointIdx = -1; };
         window.onpointerup = stopDragging;
         window.onpointercancel = stopDragging;
 
@@ -424,16 +442,19 @@
             bg.style.transform = fg.style.transform = svg.style.transform = `scale(${s.zoom}) translate(${mx}%, ${my}%)`;
             bg.style.filter = s.effect === 'blur' ? 'blur(8px) brightness(0.8)' : s.effect === 'grayscale' ? 'grayscale(1) opacity(0.7)' : 'none';
 
+            const rad = s.radius ?? 5;
+            const rx = (rad / Math.sqrt(stageAspect)).toFixed(2);
+            const ry = (rad * Math.sqrt(stageAspect)).toFixed(2);
             if (s.type === 'polygon' && s.points && s.points.length > 2) fg.style.clipPath = `polygon(${s.points.map(p=>`${p.x}% ${p.y}%`).join(', ')})`;
-            else if (s.type === 'circle') fg.style.clipPath = `circle(10% at ${s.x}% ${s.y}%)`;
+            else if (s.type === 'circle') fg.style.clipPath = `ellipse(${rx}% ${ry}% at ${s.x}% ${s.y}%)`;
             else fg.style.clipPath = 'none';
 
             if ((s.thickness ?? 2) > 0) {
                 if (s.type === 'circle') {
                     const c = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
                     c.setAttribute("cx", s.x); c.setAttribute("cy", s.y);
-                    c.setAttribute("rx", (5 / Math.sqrt(stageAspect)).toFixed(2));
-                    c.setAttribute("ry", (5 * Math.sqrt(stageAspect)).toFixed(2));
+                    c.setAttribute("rx", rx);
+                    c.setAttribute("ry", ry);
                     c.setAttribute("fill", "none"); c.setAttribute("stroke", col); c.setAttribute("stroke-width", s.thickness);
                     c.setAttribute("vector-effect", "non-scaling-stroke");
                     svg.appendChild(c);
@@ -588,6 +609,7 @@
                     const state = {
                         type: k1.type, color: k1.color, alpha: k1.alpha, thickness: k1.thickness, effect: k1.effect, vSize: k1.vSize,
                         x: lerp(k1.x, k2.x, alpha), y: lerp(k1.y, k2.y, alpha), zoom: lerp(k1.zoom, k2.zoom, alpha),
+                        radius: lerp(k1.radius ?? 5, k2.radius ?? 5, alpha),
                         points: (k1.type === 'polygon' && k1.points && k2.points && k1.points.length === k2.points.length)
                             ? k1.points.map((p, idx) => ({ x: lerp(p.x, k2.points[idx].x, alpha), y: lerp(p.y, k2.points[idx].y, alpha) }))
                             : k1.points
@@ -801,7 +823,7 @@
             }
             const raw = Array.isArray(data) && data.length > 0 && data[0].keyframes ? data[0].keyframes : Array.isArray(data) ? data : [];
             activeKeyframes = raw.map(k => ({
-                time: k.time ?? 0, x: k.x ?? 50, y: k.y ?? 50, zoom: k.zoom ?? 1,
+                time: k.time ?? 0, x: k.x ?? 50, y: k.y ?? 50, zoom: k.zoom ?? 1, radius: k.radius ?? 5,
                 type: k.type ?? 'circle', effect: k.effect ?? 'none', color: k.color ?? '#ffd700',
                 alpha: k.alpha ?? 1, thickness: k.thickness ?? 2, vSize: k.vSize ?? 1.5,
                 easing: k.easing ?? 'linear', points: Array.isArray(k.points) ? k.points : []

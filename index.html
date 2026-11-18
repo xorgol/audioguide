@@ -417,7 +417,8 @@
               const alpha = duration > 0 ? ease((currentTime - k1.time) / duration, k1.easing) : 1;
               activeState = {
                 type: k1.type, color: k1.color, alpha: k1.alpha, thickness: k1.thickness, effect: k1.effect,
-                x: lerp(k1.x, k2.x, alpha), y: lerp(k1.y, k2.y, alpha), zoom: lerp(k1.zoom, k2.zoom, alpha)
+                x: lerp(k1.x, k2.x, alpha), y: lerp(k1.y, k2.y, alpha), zoom: lerp(k1.zoom, k2.zoom, alpha),
+                radius: lerp(k1.radius ?? 5, k2.radius ?? 5, alpha)
               };
               if (k1.type === 'polygon' && k1.points && k2.points && k1.points.length === k2.points.length) {
                 activeState.points = k1.points.map((p1, idx) => ({ x: lerp(p1.x, k2.points[idx].x, alpha), y: lerp(p1.y, k2.points[idx].y, alpha) }));
@@ -449,8 +450,11 @@
           bgLayer.style.transform = fgLayer.style.transform = annotationLayer.style.transform = trans;
           bgLayer.style.filter = s.effect === 'blur' ? 'blur(8px) brightness(0.8)' : s.effect === 'grayscale' ? 'grayscale(1) opacity(0.7)' : 'none';
 
+          const rad = s.radius ?? 5;
+          const rx = (rad / Math.sqrt(stageAspect)).toFixed(2);
+          const ry = (rad * Math.sqrt(stageAspect)).toFixed(2);
           if (s.type === 'polygon' && s.points && s.points.length > 2) fgLayer.style.clipPath = `polygon(${s.points.map(p=>`${p.x}% ${p.y}%`).join(', ')})`;
-          else if (s.type === 'circle') fgLayer.style.clipPath = `circle(10% at ${s.x}% ${s.y}%)`;
+          else if (s.type === 'circle') fgLayer.style.clipPath = `ellipse(${rx}% ${ry}% at ${s.x}% ${s.y}%)`;
           else fgLayer.style.clipPath = 'none';
 
           if (s.thickness > 0) {
@@ -460,8 +464,8 @@
             if (s.type === 'circle') {
               const c = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
               c.setAttribute("cx", s.x); c.setAttribute("cy", s.y);
-              c.setAttribute("rx", (5 / Math.sqrt(stageAspect)).toFixed(2));
-              c.setAttribute("ry", (5 * Math.sqrt(stageAspect)).toFixed(2));
+              c.setAttribute("rx", rx);
+              c.setAttribute("ry", ry);
               c.setAttribute("fill", "none"); c.setAttribute("stroke", col); c.setAttribute("stroke-width", s.thickness);
               c.setAttribute("vector-effect", "non-scaling-stroke");
               annotationLayer.appendChild(c);
@@ -512,6 +516,7 @@
               x: k.x ?? 50,
               y: k.y ?? 50,
               zoom: k.zoom ?? 1,
+              radius: k.radius ?? 5,
               type: k.type ?? 'circle',
               color: k.color ?? '#ffd700',
               alpha: k.alpha ?? 1,
