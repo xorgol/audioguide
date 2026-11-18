@@ -166,6 +166,12 @@
 
         <div id="tab-annotate" class="tab-panel active">
             <div class="section">
+                <label for="anno-layer-select">Annotation Layer (Simultaneous)</label>
+                <div class="btn-row" style="margin-bottom:8px; align-items:center;">
+                    <select id="anno-layer-select" style="flex:2; margin-bottom:0;"></select>
+                    <button id="add-anno-layer" type="button" style="flex:1; background:var(--primary); font-size:0.75rem;">+ Layer</button>
+                    <button id="del-anno-layer" type="button" style="flex:0 0 38px; background:#ff4747; padding:0;">×</button>
+                </div>
                 <p class="hint">Shortcut: <b>Ctrl+Z</b> Undo vertex. <b>Tap/Click</b> Art to set focus/add point.</p>
                 <label>Marker Type</label>
                 <select id="prop-type">
@@ -269,7 +275,9 @@
     <script type="module">
         import { Player } from "./shinkwasa.js";
 
-        let activeKeyframes = [];
+        let annotationTracks = [{ id: 'anno-1', name: 'Annotation 1', keyframes: [] }];
+        let activeAnnoIdx = 0;
+        let activeKeyframes = annotationTracks[0].keyframes;
         let selectedIdx = -1;
         let isDragging = false;
         let isSizingCircle = false;
@@ -430,65 +438,153 @@
             }
         });
 
-        function drawAnnotation(s, showHandles) {
+        function syncAnnoLayerUI() {
+            const sel = document.getElementById('anno-layer-select');
+            sel.innerHTML = '';
+            annotationTracks.forEach((tr, idx) => {
+                const opt = document.createElement('option');
+                opt.value = idx;
+                opt.textContent = `${tr.name || `Annotation ${idx + 1}`} (${tr.keyframes.length})`;
+                if (idx === activeAnnoIdx) opt.selected = true;
+                sel.appendChild(opt);
+            });
+        }
+
+        document.getElementById('anno-layer-select').onchange = (e) => {
+            activeAnnoIdx = parseInt(e.target.value, 10) || 0;
+            activeKeyframes = annotationTracks[activeAnnoIdx].keyframes;
+            selectedIdx = activeKeyframes.length > 0 ? 0 : -1;
+            if (selectedIdx !== -1) Object.keys(propUI).forEach(k => { if (activeKeyframes[0][k] !== undefined) propUI[k].value = activeKeyframes[0][k]; });
+            render();
+        };
+
+        document.getElementById('add-anno-layer').onclick = () => {
+            const idx = annotationTracks.length + 1;
+            annotationTracks.push({ id: `anno-${Date.now()}`, name: `Annotation ${idx}`, keyframes: [] });
+            activeAnnoIdx = annotationTracks.length - 1;
+            activeKeyframes = annotationTracks[activeAnnoIdx].keyframes;
+            selectedIdx = -1;
+            render();
+        };
+
+        document.getElementById('del-anno-layer').onclick = () => {
+            if (annotationTracks.length <= 1) return alert('At least one annotation layer is required.');
+            annotationTracks.splice(activeAnnoIdx, 1);
+            activeAnnoIdx = Math.max(0, activeAnnoIdx - 1);
+            activeKeyframes = annotationTracks[activeAnnoIdx].keyframes;
+            selectedIdx = activeKeyframes.length > 0 ? 0 : -1;
+            render();
+        };
+
+        function interpolateTrackAt(keys, t) {
+            if (!Array.isArray(keys) || keys.length === 0) return null;
+            const first = keys[0].time, last = keys[keys.length - 1].time;
+            if (keys.length === 1) return Math.abs(t - first) <= 0.25 ? keys[0] : null;
+            if (t < first || t > last) return null;
+            let k1 = keys[0], k2 = keys[0];
+            for (let i = 0; i < keys.length - 1; i++) {
+                if (t >= keys[i].time && t <= keys[i + 1].time) { k1 = keys[i]; k2 = keys[i + 1]; break; }
+            }
+            const duration = k2.time - k1.time;
+            const alpha = duration > 0 ? ease((t - k1.time) / duration, k1.easing) : 1;
+            return {
+                type: k1.type, color: k1.color, alpha: k1.alpha, thickness: k1.thickness, effect: k1.effect, vSize: k1.vSize,
+                x: lerp(k1.x, k2.x, alpha), y: lerp(k1.y, k2.y, alpha), zoom: lerp(k1.zoom, k2.zoom, alpha),
+                radius: lerp(k1.radius ?? 5, k2.radius ?? 5, alpha),
+                points: (k1.type === 'polygon' && k1.points && k2.points && k1.points.length === k2.points.length)
+                    ? k1.points.map((p, idx) => ({ x: lerp(p.x, k2.points[idx].x, alpha), y: lerp(p.y, k2.points[idx].y, alpha) }))
+                    : k1.points
+            };
+        }
+
+        function drawAnnotation(statesInput, showHandles) {
             svg.innerHTML = '';
-            if (!s) {
+            const states = Array.isArray(statesInput) ? statesInput.filter(Boolean) : (statesInput ? [statesInput] : []);
+            if (states.length === 0) {
                 bg.style.filter = 'none'; fg.style.clipPath = 'none';
                 bg.style.transform = fg.style.transform = svg.style.transform = 'scale(1) translate(0,0)';
                 return;
             }
-            const hex = s.color || '#ffd700';
-            const alpha = s.alpha ?? 1;
-            const col = `rgba(${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)},${alpha})`;
-            const mx = (50 - s.x) * s.zoom, my = (50 - s.y) * s.zoom;
-            bg.style.transform = fg.style.transform = svg.style.transform = `scale(${s.zoom}) translate(${mx}%, ${my}%)`;
-            bg.style.filter = s.effect === 'blur' ? 'blur(8px) brightness(0.8)' : s.effect === 'grayscale' ? 'grayscale(1) opacity(0.7)' : 'none';
+            const primary = states[0];
+            const mx = (50 - primary.x) * primary.zoom, my = (50 - primary.y) * primary.zoom;
+            bg.style.transform = fg.style.transform = svg.style.transform = `scale(${primary.zoom}) translate(${mx}%, ${my}%)`;
+            const effState = states.find(st => st.effect && st.effect !== 'none') || primary;
+            bg.style.filter = effState.effect === 'blur' ? 'blur(8px) brightness(0.8)' : effState.effect === 'grayscale' ? 'grayscale(1) opacity(0.7)' : 'none';
 
-            const rad = s.radius ?? 5;
-            const rx = (rad / Math.sqrt(stageAspect)).toFixed(2);
-            const ry = (rad * Math.sqrt(stageAspect)).toFixed(2);
-            if (s.type === 'polygon' && s.points && s.points.length > 2) fg.style.clipPath = `polygon(${s.points.map(p=>`${p.x}% ${p.y}%`).join(', ')})`;
-            else if (s.type === 'circle') fg.style.clipPath = `ellipse(${rx}% ${ry}% at ${s.x}% ${s.y}%)`;
-            else fg.style.clipPath = 'none';
+            // Combined SVG clipPath so multiple circles/polygons reveal simultaneously
+            const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+            const clip = document.createElementNS("http://www.w3.org/2000/svg", "clipPath");
+            clip.setAttribute("id", "fg-clip");
+            clip.setAttribute("clipPathUnits", "objectBoundingBox");
+            let hasClip = false;
 
-            if ((s.thickness ?? 2) > 0) {
-                if (s.type === 'circle') {
-                    const c = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
-                    c.setAttribute("cx", s.x); c.setAttribute("cy", s.y);
-                    c.setAttribute("rx", rx);
-                    c.setAttribute("ry", ry);
-                    c.setAttribute("fill", "none"); c.setAttribute("stroke", col); c.setAttribute("stroke-width", s.thickness);
-                    c.setAttribute("vector-effect", "non-scaling-stroke");
-                    svg.appendChild(c);
-                } else if (s.type === 'pointer') {
-                    const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
-                    l.setAttribute("x1", s.x + 4); l.setAttribute("y1", s.y + 4); l.setAttribute("x2", s.x); l.setAttribute("y2", s.y);
-                    l.setAttribute("stroke", col); l.setAttribute("stroke-width", Math.max(2, s.thickness));
-                    l.setAttribute("vector-effect", "non-scaling-stroke");
-                    svg.appendChild(l);
-                    const dot = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
-                    dot.setAttribute("cx", s.x); dot.setAttribute("cy", s.y);
-                    dot.setAttribute("rx", (1.2 / Math.sqrt(stageAspect)).toFixed(2));
-                    dot.setAttribute("ry", (1.2 * Math.sqrt(stageAspect)).toFixed(2));
-                    dot.setAttribute("fill", col);
-                    svg.appendChild(dot);
-                } else if (s.type === 'polygon' && s.points && s.points.length > 1) {
-                    const tag = s.points.length > 2 ? "polygon" : "polyline";
-                    const p = document.createElementNS("http://www.w3.org/2000/svg", tag);
-                    p.setAttribute("points", s.points.map(pt=>`${pt.x},${pt.y}`).join(' '));
-                    p.setAttribute("fill", "none"); p.setAttribute("stroke", col); p.setAttribute("stroke-width", s.thickness);
-                    p.setAttribute("vector-effect", "non-scaling-stroke");
-                    svg.appendChild(p);
+            states.forEach((s, idx) => {
+                const hex = s.color || '#ffd700';
+                const alpha = s.alpha ?? 1;
+                const col = `rgba(${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)},${alpha})`;
+                const rad = s.radius ?? 5;
+                const rx = (rad / Math.sqrt(stageAspect)).toFixed(2);
+                const ry = (rad * Math.sqrt(stageAspect)).toFixed(2);
+
+                if (s.type === 'polygon' && s.points && s.points.length > 2) {
+                    const cp = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+                    cp.setAttribute("points", s.points.map(p => `${(p.x / 100).toFixed(4)},${(p.y / 100).toFixed(4)}`).join(' '));
+                    clip.appendChild(cp);
+                    hasClip = true;
+                } else if (s.type === 'circle') {
+                    const ce = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+                    ce.setAttribute("cx", (s.x / 100).toFixed(4)); ce.setAttribute("cy", (s.y / 100).toFixed(4));
+                    ce.setAttribute("rx", (parseFloat(rx) / 100).toFixed(4)); ce.setAttribute("ry", (parseFloat(ry) / 100).toFixed(4));
+                    clip.appendChild(ce);
+                    hasClip = true;
                 }
-            }
-            if (showHandles && s.type === 'polygon' && s.points) {
-                s.points.forEach(pt => {
-                    const h = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
-                    h.setAttribute("cx", pt.x); h.setAttribute("cy", pt.y);
-                    h.setAttribute("rx", ((s.vSize ?? 1.5) / Math.sqrt(stageAspect)).toFixed(2));
-                    h.setAttribute("ry", ((s.vSize ?? 1.5) * Math.sqrt(stageAspect)).toFixed(2));
-                    h.setAttribute("fill", col); svg.appendChild(h);
-                });
+
+                if ((s.thickness ?? 2) > 0) {
+                    if (s.type === 'circle') {
+                        const c = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+                        c.setAttribute("cx", s.x); c.setAttribute("cy", s.y);
+                        c.setAttribute("rx", rx); c.setAttribute("ry", ry);
+                        c.setAttribute("fill", "none"); c.setAttribute("stroke", col); c.setAttribute("stroke-width", s.thickness);
+                        c.setAttribute("vector-effect", "non-scaling-stroke");
+                        svg.appendChild(c);
+                    } else if (s.type === 'pointer') {
+                        const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                        l.setAttribute("x1", s.x + 4); l.setAttribute("y1", s.y + 4); l.setAttribute("x2", s.x); l.setAttribute("y2", s.y);
+                        l.setAttribute("stroke", col); l.setAttribute("stroke-width", Math.max(2, s.thickness));
+                        l.setAttribute("vector-effect", "non-scaling-stroke");
+                        svg.appendChild(l);
+                        const dot = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+                        dot.setAttribute("cx", s.x); dot.setAttribute("cy", s.y);
+                        dot.setAttribute("rx", (1.2 / Math.sqrt(stageAspect)).toFixed(2));
+                        dot.setAttribute("ry", (1.2 * Math.sqrt(stageAspect)).toFixed(2));
+                        dot.setAttribute("fill", col);
+                        svg.appendChild(dot);
+                    } else if (s.type === 'polygon' && s.points && s.points.length > 1) {
+                        const tag = s.points.length > 2 ? "polygon" : "polyline";
+                        const p = document.createElementNS("http://www.w3.org/2000/svg", tag);
+                        p.setAttribute("points", s.points.map(pt=>`${pt.x},${pt.y}`).join(' '));
+                        p.setAttribute("fill", "none"); p.setAttribute("stroke", col); p.setAttribute("stroke-width", s.thickness);
+                        p.setAttribute("vector-effect", "non-scaling-stroke");
+                        svg.appendChild(p);
+                    }
+                }
+                if (showHandles && idx === 0 && s.type === 'polygon' && s.points) {
+                    s.points.forEach(pt => {
+                        const h = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+                        h.setAttribute("cx", pt.x); h.setAttribute("cy", pt.y);
+                        h.setAttribute("rx", ((s.vSize ?? 1.5) / Math.sqrt(stageAspect)).toFixed(2));
+                        h.setAttribute("ry", ((s.vSize ?? 1.5) * Math.sqrt(stageAspect)).toFixed(2));
+                        h.setAttribute("fill", col); svg.appendChild(h);
+                    });
+                }
+            });
+
+            if (hasClip) {
+                defs.appendChild(clip);
+                svg.insertBefore(defs, svg.firstChild);
+                fg.style.clipPath = 'url(#fg-clip)';
+            } else {
+                fg.style.clipPath = 'none';
             }
         }
 
@@ -521,8 +617,18 @@
                 item.appendChild(grid); item.appendChild(del); list.appendChild(item);
             });
 
-            // Canvas
-            drawAnnotation(selectedIdx === -1 ? null : activeKeyframes[selectedIdx], true);
+            // Canvas: show selected keyframe + any simultaneous annotations at that time
+            syncAnnoLayerUI();
+            if (selectedIdx === -1) {
+                drawAnnotation(null, false);
+            } else {
+                const refTime = activeKeyframes[selectedIdx].time;
+                const others = annotationTracks
+                    .filter((_, idx) => idx !== activeAnnoIdx)
+                    .map(tr => interpolateTrackAt(tr.keyframes, refTime))
+                    .filter(Boolean);
+                drawAnnotation([activeKeyframes[selectedIdx], ...others], true);
+            }
             if (typeof renderTimeline === 'function') renderTimeline();
         }
 
@@ -600,26 +706,9 @@
             syncExtraAudio(t, isPaused);
             syncTextAtTime(t);
             if (typeof updatePlayhead === 'function') updatePlayhead(t);
-            if (!isPaused && activeKeyframes.length > 1 && !isDragging) {
-                let k1 = null, k2 = null;
-                for(let i=0; i<activeKeyframes.length-1; i++) {
-                    if (t >= activeKeyframes[i].time && t <= activeKeyframes[i+1].time) { k1 = activeKeyframes[i]; k2 = activeKeyframes[i+1]; break; }
-                }
-                if (k1 && k2) {
-                    const duration = k2.time - k1.time;
-                    const alpha = duration > 0 ? ease((t - k1.time) / duration, k1.easing) : 1;
-                    const state = {
-                        type: k1.type, color: k1.color, alpha: k1.alpha, thickness: k1.thickness, effect: k1.effect, vSize: k1.vSize,
-                        x: lerp(k1.x, k2.x, alpha), y: lerp(k1.y, k2.y, alpha), zoom: lerp(k1.zoom, k2.zoom, alpha),
-                        radius: lerp(k1.radius ?? 5, k2.radius ?? 5, alpha),
-                        points: (k1.type === 'polygon' && k1.points && k2.points && k1.points.length === k2.points.length)
-                            ? k1.points.map((p, idx) => ({ x: lerp(p.x, k2.points[idx].x, alpha), y: lerp(p.y, k2.points[idx].y, alpha) }))
-                            : k1.points
-                    };
-                    drawAnnotation(state, false);
-                } else {
-                    drawAnnotation(null, false);
-                }
+            if (!isPaused && !isDragging) {
+                const activeStates = annotationTracks.map(tr => interpolateTrackAt(tr.keyframes, t)).filter(Boolean);
+                drawAnnotation(activeStates, false);
             }
         }, 33);
 
@@ -806,6 +895,15 @@
             }
         };
 
+        function normalizeKfItem(k) {
+            return {
+                time: k.time ?? 0, x: k.x ?? 50, y: k.y ?? 50, zoom: k.zoom ?? 1, radius: k.radius ?? 5,
+                type: k.type ?? 'circle', effect: k.effect ?? 'none', color: k.color ?? '#ffd700',
+                alpha: k.alpha ?? 1, thickness: k.thickness ?? 2, vSize: k.vSize ?? 1.5,
+                easing: k.easing ?? 'linear', points: Array.isArray(k.points) ? k.points : []
+            };
+        }
+
         function loadAnnotationsData(data) {
             if (data && !Array.isArray(data) && typeof data === 'object') {
                 if (data.metadata) {
@@ -823,13 +921,18 @@
                 }
                 data = data.annotations || [];
             }
-            const raw = Array.isArray(data) && data.length > 0 && data[0].keyframes ? data[0].keyframes : Array.isArray(data) ? data : [];
-            activeKeyframes = raw.map(k => ({
-                time: k.time ?? 0, x: k.x ?? 50, y: k.y ?? 50, zoom: k.zoom ?? 1, radius: k.radius ?? 5,
-                type: k.type ?? 'circle', effect: k.effect ?? 'none', color: k.color ?? '#ffd700',
-                alpha: k.alpha ?? 1, thickness: k.thickness ?? 2, vSize: k.vSize ?? 1.5,
-                easing: k.easing ?? 'linear', points: Array.isArray(k.points) ? k.points : []
-            })).sort((a, b) => a.time - b.time);
+            if (Array.isArray(data) && data.length > 0 && data[0].keyframes) {
+                annotationTracks = data.map((anno, i) => ({
+                    id: anno.id || `anno-${i + 1}`,
+                    name: anno.name || `Annotation ${i + 1}`,
+                    keyframes: (anno.keyframes || []).map(normalizeKfItem).sort((a, b) => a.time - b.time)
+                }));
+            } else {
+                const raw = Array.isArray(data) ? data : [];
+                annotationTracks = [{ id: 'anno-1', name: 'Annotation 1', keyframes: raw.map(normalizeKfItem).sort((a, b) => a.time - b.time) }];
+            }
+            activeAnnoIdx = 0;
+            activeKeyframes = annotationTracks[0].keyframes;
             selectedIdx = activeKeyframes.length > 0 ? 0 : -1;
             if (selectedIdx !== -1) Object.keys(propUI).forEach(k => propUI[k].value = activeKeyframes[0][k]);
             render();
@@ -866,15 +969,16 @@
                 audioTracks: audioTracks.map(({ el, ...rest }) => rest),
                 mediaCues,
                 textCues,
-                annotations: [{ keyframes: activeKeyframes }]
+                annotations: annotationTracks.filter(a => a.keyframes.length > 0).map(a => ({ name: a.name, keyframes: a.keyframes }))
             };
             const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'audioguide.json'; a.click();
         };
 
         document.getElementById('export-json').onclick = () => {
-            if (activeKeyframes.length === 0) return alert("Add keyframes!");
-            const blob = new Blob([JSON.stringify([{ keyframes: activeKeyframes }], null, 2)], { type: 'application/json' });
+            const nonEmpty = annotationTracks.filter(a => a.keyframes.length > 0);
+            if (nonEmpty.length === 0) return alert("Add keyframes!");
+            const blob = new Blob([JSON.stringify(nonEmpty.map(a => ({ name: a.name, keyframes: a.keyframes })), null, 2)], { type: 'application/json' });
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'annotations.json'; a.click();
         };
 
@@ -922,6 +1026,7 @@
         renderMediaCues();
         renderAudioTracks();
         renderTextCues();
+        syncAnnoLayerUI();
 
         // Multi-Track Timeline Logic
 
@@ -1080,42 +1185,49 @@
                 tlText.appendChild(el);
             });
 
-            // FX / Keyframes Track
+            // FX / Keyframes Track (all annotation layers)
             tlFx.innerHTML = '';
-            for (let i = 0; i < activeKeyframes.length - 1; i++) {
-                const k1 = activeKeyframes[i], k2 = activeKeyframes[i + 1];
-                const span = document.createElement('div');
-                span.className = `tl-fx-span effect-${k1.effect || 'none'}`;
-                span.style.left = `${k1.time * pxPerSec}px`;
-                span.style.width = `${Math.max(4, (k2.time - k1.time) * pxPerSec)}px`;
-                tlFx.appendChild(span);
-            }
-            activeKeyframes.forEach((kf, i) => {
-                const marker = document.createElement('div');
-                marker.className = `tl-kf ${i === selectedIdx ? 'selected' : ''}`;
-                marker.style.left = `${kf.time * pxPerSec}px`;
-                marker.title = `${kf.type} (${kf.effect}) @ ${kf.time}s`;
-                marker.onpointerdown = (e) => {
-                    const origTime = kf.time;
-                    let moved = false;
-                    startTlDrag(e, (dx) => {
-                        if (Math.abs(dx) > 3) moved = true;
-                        kf.time = parseFloat(Math.max(0, origTime + dx / pxPerSec).toFixed(2));
-                        marker.style.left = `${kf.time * pxPerSec}px`;
-                    }, () => {
-                        if (moved) {
-                            activeKeyframes.sort((a, b) => a.time - b.time);
-                            selectedIdx = activeKeyframes.indexOf(kf);
-                        } else {
-                            selectedIdx = i;
-                            Object.keys(propUI).forEach(k => propUI[k].value = kf[k]);
-                            player.seek(kf.time);
-                            switchTab('annotate');
-                        }
-                        render();
-                    });
-                };
-                tlFx.appendChild(marker);
+            annotationTracks.forEach((tr, tIdx) => {
+                const keys = tr.keyframes;
+                for (let i = 0; i < keys.length - 1; i++) {
+                    const k1 = keys[i], k2 = keys[i + 1];
+                    const span = document.createElement('div');
+                    span.className = `tl-fx-span effect-${k1.effect || 'none'}`;
+                    span.style.left = `${k1.time * pxPerSec}px`;
+                    span.style.width = `${Math.max(4, (k2.time - k1.time) * pxPerSec)}px`;
+                    if (tIdx !== activeAnnoIdx) span.style.opacity = '0.45';
+                    tlFx.appendChild(span);
+                }
+                keys.forEach((kf, i) => {
+                    const marker = document.createElement('div');
+                    marker.className = `tl-kf ${tIdx === activeAnnoIdx && i === selectedIdx ? 'selected' : ''}`;
+                    marker.style.left = `${kf.time * pxPerSec}px`;
+                    if (tIdx !== activeAnnoIdx) marker.style.opacity = '0.6';
+                    marker.title = `${tr.name}: ${kf.type} (${kf.effect}) @ ${kf.time}s`;
+                    marker.onpointerdown = (e) => {
+                        const origTime = kf.time;
+                        let moved = false;
+                        startTlDrag(e, (dx) => {
+                            if (Math.abs(dx) > 3) moved = true;
+                            kf.time = parseFloat(Math.max(0, origTime + dx / pxPerSec).toFixed(2));
+                            marker.style.left = `${kf.time * pxPerSec}px`;
+                        }, () => {
+                            activeAnnoIdx = tIdx;
+                            activeKeyframes = annotationTracks[activeAnnoIdx].keyframes;
+                            if (moved) {
+                                activeKeyframes.sort((a, b) => a.time - b.time);
+                                selectedIdx = activeKeyframes.indexOf(kf);
+                            } else {
+                                selectedIdx = i;
+                                Object.keys(propUI).forEach(k => { if (kf[k] !== undefined) propUI[k].value = kf[k]; });
+                                player.seek(kf.time);
+                                switchTab('annotate');
+                            }
+                            render();
+                        });
+                    };
+                    tlFx.appendChild(marker);
+                });
             });
             updatePlayhead(player.currentTime || 0);
         }
