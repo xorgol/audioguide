@@ -62,14 +62,44 @@
 
         .hint { font-size: 0.75rem; color: #666; font-style: italic; margin-bottom: 8px; }
 
+        /* Video-Editor Multi-Track Timeline */
+        #timeline-pane { flex: 0 0 auto; background: #18181b; color: #e4e4e7; border-top: 1px solid #333; display: flex; flex-direction: column; user-select: none; }
+        #timeline-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 10px; background: #222226; border-bottom: 1px solid #333; font-size: 0.72rem; }
+        #tl-time { font-family: ui-monospace, monospace; color: #ffd700; font-weight: bold; }
+        .tl-zoom-wrap { display: flex; align-items: center; gap: 6px; }
+        .tl-zoom-wrap input { width: 80px; margin: 0; padding: 0; min-height: auto; }
+        #timeline-body { display: flex; overflow: hidden; }
+        #tl-labels { flex: 0 0 54px; background: #202024; border-right: 1px solid #333; display: flex; flex-direction: column; z-index: 5; }
+        .tl-label { height: 26px; display: flex; align-items: center; justify-content: center; font-size: 0.62rem; font-weight: bold; letter-spacing: 0.04em; color: #a1a1aa; border-bottom: 1px solid #2e2e34; }
+        .tl-label.ruler-lbl { height: 20px; color: #71717a; }
+        #timeline-scroll { flex: 1; overflow-x: auto; overflow-y: hidden; position: relative; touch-action: pan-x; }
+        #timeline-canvas { position: relative; min-width: 100%; }
+        #tl-ruler { height: 20px; position: relative; background: #1f1f23; border-bottom: 1px solid #333; cursor: ew-resize; touch-action: none; }
+        .tl-tick { position: absolute; top: 0; bottom: 0; border-left: 1px solid #3f3f46; font-size: 0.6rem; color: #a1a1aa; padding-left: 3px; line-height: 18px; pointer-events: none; }
+        .tl-lane { height: 26px; position: relative; border-bottom: 1px solid #27272a; background: #18181b; }
+        .tl-clip { position: absolute; top: 3px; bottom: 3px; border-radius: 4px; padding: 0 6px; font-size: 0.65rem; font-weight: 600; color: #fff; display: flex; align-items: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: grab; touch-action: none; border: 1px solid rgba(255,255,255,0.25); }
+        .tl-clip.type-image { background: #3b5998; }
+        .tl-clip.type-video { background: #0f766e; }
+        .tl-clip.type-model3d { background: #6d28d9; }
+        .tl-clip.type-audio { background: #2d6a4f; }
+        .tl-clip-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 8px; cursor: ew-resize; background: rgba(255,255,255,0.22); }
+        .tl-fx-span { position: absolute; top: 8px; bottom: 8px; border-radius: 3px; background: rgba(255, 215, 0, 0.25); border: 1px solid rgba(255, 215, 0, 0.5); pointer-events: none; }
+        .tl-fx-span.effect-blur { background: rgba(56, 189, 248, 0.3); border-color: #38bdf8; }
+        .tl-fx-span.effect-grayscale { background: rgba(161, 161, 170, 0.35); border-color: #a1a1aa; }
+        .tl-kf { position: absolute; top: 5px; width: 14px; height: 14px; margin-left: -7px; background: #ffd700; border: 2px solid #18181b; transform: rotate(45deg); cursor: grab; touch-action: none; z-index: 4; }
+        .tl-kf.selected { background: #ff4747; border-color: #fff; transform: rotate(45deg) scale(1.2); }
+        #tl-playhead { position: absolute; top: 0; bottom: 0; width: 2px; background: #ef4444; pointer-events: none; z-index: 10; }
+        #tl-playhead::before { content: ''; position: absolute; top: 0; left: -5px; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid #ef4444; }
+
         @media (max-width: 900px) {
             body { flex-direction: column; }
-            #preview-pane { flex: 0 0 46vh; flex: 0 0 46dvh; border-right: none; border-bottom: 2px solid #ddd; }
+            #preview-pane { flex: 0 0 54vh; flex: 0 0 54dvh; border-right: none; border-bottom: 2px solid #ddd; }
             #player-container { padding: 4px 6px; }
             #control-pane { width: 100%; flex: 1 1 auto; min-height: 0; padding: 12px; }
             input, select { font-size: 16px; min-height: 36px; }
             .kf-grid input, .kf-grid select { font-size: 14px; min-height: 32px; }
             button { min-height: 42px; font-size: 0.9rem; }
+            .tl-zoom-wrap input { min-height: auto; }
         }
     </style>
 </head>
@@ -84,6 +114,32 @@
                 <video id="artwork-video-fg" class="artwork-layer hidden" muted loop playsinline></video>
                 <model-viewer id="artwork-model-3d" class="artwork-layer hidden" camera-controls auto-rotate shadow-intensity="1"></model-viewer>
                 <svg id="annotation-layer" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+            </div>
+        </div>
+        <div id="timeline-pane">
+            <div id="timeline-toolbar">
+                <span id="tl-time">00:00.0 / 02:00.0</span>
+                <div class="tl-zoom-wrap">
+                    <span>Zoom</span>
+                    <input type="range" id="tl-zoom" min="6" max="40" value="14">
+                </div>
+            </div>
+            <div id="timeline-body">
+                <div id="tl-labels">
+                    <div class="tl-label ruler-lbl">TIME</div>
+                    <div class="tl-label">MEDIA</div>
+                    <div class="tl-label">AUDIO</div>
+                    <div class="tl-label">FX</div>
+                </div>
+                <div id="timeline-scroll">
+                    <div id="timeline-canvas">
+                        <div id="tl-ruler"></div>
+                        <div id="tl-track-media" class="tl-lane"></div>
+                        <div id="tl-track-audio" class="tl-lane"></div>
+                        <div id="tl-track-fx" class="tl-lane"></div>
+                        <div id="tl-playhead" style="left:0"></div>
+                    </div>
+                </div>
             </div>
         </div>
         <div id="player-container"><div id="player"></div></div>
@@ -388,6 +444,7 @@
 
             // Canvas
             drawAnnotation(selectedIdx === -1 ? null : activeKeyframes[selectedIdx], true);
+            if (typeof renderTimeline === 'function') renderTimeline();
         }
 
         const lerp = (a, b, t) => a + (b - a) * t;
@@ -449,6 +506,7 @@
             const isPaused = !(player.audio && !player.audio.paused);
             syncMediaAtTime(t, isPaused);
             syncExtraAudio(t, isPaused);
+            if (typeof updatePlayhead === 'function') updatePlayhead(t);
             if (!isPaused && activeKeyframes.length > 1 && !isDragging) {
                 let k1 = null, k2 = null;
                 for(let i=0; i<activeKeyframes.length-1; i++) {
@@ -518,6 +576,7 @@
                 card.querySelector('.cue-del').onclick = () => { mediaCues.splice(i, 1); activeCueKey = ''; renderMediaCues(); };
                 mediaList.appendChild(card);
             });
+            if (typeof renderTimeline === 'function') renderTimeline();
         }
 
         mediaPicker.onchange = e => {
@@ -580,6 +639,7 @@
                 if (delBtn) delBtn.onclick = () => { if (tr.el) tr.el.pause(); audioTracks.splice(i, 1); renderAudioTracks(); };
                 audioList.appendChild(card);
             });
+            if (typeof renderTimeline === 'function') renderTimeline();
         }
 
         audioPicker.onchange = e => {
@@ -724,6 +784,199 @@
 
         renderMediaCues();
         renderAudioTracks();
+
+        // Multi-Track Timeline Logic
+        const tlCanvas = document.getElementById('timeline-canvas');
+        const tlRuler = document.getElementById('tl-ruler');
+        const tlMedia = document.getElementById('tl-track-media');
+        const tlAudio = document.getElementById('tl-track-audio');
+        const tlFx = document.getElementById('tl-track-fx');
+        const tlPlayhead = document.getElementById('tl-playhead');
+        const tlTimeLbl = document.getElementById('tl-time');
+        const tlZoomInp = document.getElementById('tl-zoom');
+        let pxPerSec = parseFloat(tlZoomInp.value) || 14;
+
+        function getTimelineDuration() {
+            const audioDur = (player.audio && isFinite(player.audio.duration)) ? player.audio.duration : 60;
+            const maxMedia = mediaCues.reduce((m, c) => Math.max(m, c.end || 0), 0);
+            const maxAudio = audioTracks.reduce((m, tr) => Math.max(m, (tr.start || 0) + (tr.duration > 0 ? tr.duration : 20)), 0);
+            const maxKf = activeKeyframes.reduce((m, k) => Math.max(m, k.time || 0), 0);
+            return Math.max(30, Math.ceil(Math.max(audioDur, maxMedia, maxAudio, maxKf + 5)));
+        }
+
+        function fmtTime(sec) {
+            const m = Math.floor(sec / 60), s = (sec % 60).toFixed(1).padStart(4, '0');
+            return `${String(m).padStart(2, '0')}:${s}`;
+        }
+
+        function updatePlayhead(t) {
+            const dur = getTimelineDuration();
+            tlPlayhead.style.left = `${Math.max(0, t * pxPerSec)}px`;
+            tlTimeLbl.textContent = `${fmtTime(t)} / ${fmtTime(dur)}`;
+        }
+
+        function switchTab(name) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${name}`));
+        }
+
+        function startTlDrag(e, onMove, onEnd) {
+            e.stopPropagation();
+            const startX = e.clientX;
+            const move = (ev) => onMove(ev.clientX - startX);
+            const up = () => {
+                window.removeEventListener('pointermove', move);
+                window.removeEventListener('pointerup', up);
+                window.removeEventListener('pointercancel', up);
+                if (onEnd) onEnd();
+            };
+            window.addEventListener('pointermove', move);
+            window.addEventListener('pointerup', up);
+            window.addEventListener('pointercancel', up);
+        }
+
+        function renderTimeline() {
+            const dur = getTimelineDuration();
+            tlCanvas.style.width = `${Math.max(tlCanvas.parentElement.clientWidth, dur * pxPerSec)}px`;
+
+            // Ruler ticks
+            tlRuler.innerHTML = '';
+            const step = pxPerSec < 10 ? 10 : 5;
+            for (let s = 0; s <= dur; s += step) {
+                const tick = document.createElement('div');
+                tick.className = 'tl-tick';
+                tick.style.left = `${s * pxPerSec}px`;
+                tick.textContent = `${s}s`;
+                tlRuler.appendChild(tick);
+            }
+
+            // Media Track
+            tlMedia.innerHTML = '';
+            mediaCues.forEach((cue, i) => {
+                const st = cue.start ?? 0, en = Math.max(st + 1, cue.end ?? st + 10);
+                const el = document.createElement('div');
+                el.className = `tl-clip type-${cue.type}`;
+                el.style.left = `${st * pxPerSec}px`;
+                el.style.width = `${Math.max(16, (en - st) * pxPerSec)}px`;
+                el.title = `${cue.type}: ${cue.label || cue.src} (${st}s - ${en}s)`;
+                el.textContent = `${cue.label || cue.type}`;
+                const rz = document.createElement('div');
+                rz.className = 'tl-clip-resize';
+                rz.onpointerdown = (e) => {
+                    const origEnd = en;
+                    startTlDrag(e, (dx) => {
+                        cue.end = parseFloat(Math.max(st + 0.5, origEnd + dx / pxPerSec).toFixed(1));
+                        el.style.width = `${Math.max(16, (cue.end - st) * pxPerSec)}px`;
+                    }, () => { activeCueKey = ''; renderMediaCues(); renderTimeline(); });
+                };
+                el.appendChild(rz);
+                el.onpointerdown = (e) => {
+                    if (e.target === rz) return;
+                    const origStart = st, origLen = en - st;
+                    let moved = false;
+                    startTlDrag(e, (dx) => {
+                        if (Math.abs(dx) > 3) moved = true;
+                        cue.start = parseFloat(Math.max(0, origStart + dx / pxPerSec).toFixed(1));
+                        cue.end = parseFloat((cue.start + origLen).toFixed(1));
+                        el.style.left = `${cue.start * pxPerSec}px`;
+                    }, () => {
+                        activeCueKey = '';
+                        if (!moved) { player.seek(cue.start); switchTab('media'); }
+                        renderMediaCues(); renderTimeline();
+                    });
+                };
+                tlMedia.appendChild(el);
+            });
+
+            // Audio Track
+            tlAudio.innerHTML = '';
+            audioTracks.forEach((tr, i) => {
+                const st = tr.start ?? 0;
+                const trDur = tr.duration > 0 ? tr.duration : (i === 0 && player.audio && isFinite(player.audio.duration) ? player.audio.duration : (tr.el && isFinite(tr.el.duration) ? tr.el.duration : 20));
+                const el = document.createElement('div');
+                el.className = 'tl-clip type-audio';
+                el.style.left = `${st * pxPerSec}px`;
+                el.style.width = `${Math.max(16, trDur * pxPerSec)}px`;
+                el.textContent = tr.name || `Track ${i + 1}`;
+                el.onpointerdown = (e) => {
+                    const origStart = st;
+                    let moved = false;
+                    startTlDrag(e, (dx) => {
+                        if (i === 0) return; // Track 1 stays anchored at 0
+                        if (Math.abs(dx) > 3) moved = true;
+                        tr.start = parseFloat(Math.max(0, origStart + dx / pxPerSec).toFixed(1));
+                        el.style.left = `${tr.start * pxPerSec}px`;
+                    }, () => {
+                        if (!moved) { player.seek(tr.start); switchTab('audio'); }
+                        renderAudioTracks(); renderTimeline();
+                    });
+                };
+                tlAudio.appendChild(el);
+            });
+
+            // FX / Keyframes Track
+            tlFx.innerHTML = '';
+            for (let i = 0; i < activeKeyframes.length - 1; i++) {
+                const k1 = activeKeyframes[i], k2 = activeKeyframes[i + 1];
+                const span = document.createElement('div');
+                span.className = `tl-fx-span effect-${k1.effect || 'none'}`;
+                span.style.left = `${k1.time * pxPerSec}px`;
+                span.style.width = `${Math.max(4, (k2.time - k1.time) * pxPerSec)}px`;
+                tlFx.appendChild(span);
+            }
+            activeKeyframes.forEach((kf, i) => {
+                const marker = document.createElement('div');
+                marker.className = `tl-kf ${i === selectedIdx ? 'selected' : ''}`;
+                marker.style.left = `${kf.time * pxPerSec}px`;
+                marker.title = `${kf.type} (${kf.effect}) @ ${kf.time}s`;
+                marker.onpointerdown = (e) => {
+                    const origTime = kf.time;
+                    let moved = false;
+                    startTlDrag(e, (dx) => {
+                        if (Math.abs(dx) > 3) moved = true;
+                        kf.time = parseFloat(Math.max(0, origTime + dx / pxPerSec).toFixed(2));
+                        marker.style.left = `${kf.time * pxPerSec}px`;
+                    }, () => {
+                        if (moved) {
+                            activeKeyframes.sort((a, b) => a.time - b.time);
+                            selectedIdx = activeKeyframes.indexOf(kf);
+                        } else {
+                            selectedIdx = i;
+                            Object.keys(propUI).forEach(k => propUI[k].value = kf[k]);
+                            player.seek(kf.time);
+                            switchTab('annotate');
+                        }
+                        render();
+                    });
+                };
+                tlFx.appendChild(marker);
+            });
+            updatePlayhead(player.currentTime || 0);
+        }
+
+        // Ruler Scrubbing
+        tlRuler.onpointerdown = (e) => {
+            const scrub = (clientX) => {
+                const rect = tlRuler.getBoundingClientRect();
+                const t = Math.max(0, (clientX - rect.left) / pxPerSec);
+                player.seek(t);
+                updatePlayhead(t);
+            };
+            scrub(e.clientX);
+            const move = (ev) => scrub(ev.clientX);
+            const up = () => {
+                window.removeEventListener('pointermove', move);
+                window.removeEventListener('pointerup', up);
+                window.removeEventListener('pointercancel', up);
+            };
+            window.addEventListener('pointermove', move);
+            window.addEventListener('pointerup', up);
+            window.addEventListener('pointercancel', up);
+        };
+
+        tlZoomInp.oninput = () => { pxPerSec = parseFloat(tlZoomInp.value) || 14; renderTimeline(); };
+        if (player.audio) player.audio.addEventListener('loadedmetadata', renderTimeline);
+        renderTimeline();
     </script>
 </body>
 </html>
