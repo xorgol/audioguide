@@ -7,17 +7,18 @@
     <link rel="stylesheet" href="shinkwasa.css">
     <style>
         :root { --primary: #954747; --bg: #f5f5f5; --panel: #ffffff; --text: #333; }
-        body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; height: 100dvh; overflow: hidden; }
 
-        #preview-pane { flex: 1; display: flex; flex-direction: column; border-right: 2px solid #ddd; background: #000; }
-        #viewport-container { flex: 1; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: crosshair; touch-action: none; }
+        #preview-pane { flex: 1; min-width: 0; display: flex; flex-direction: column; border-right: 2px solid #ddd; background: #000; }
+        #viewport-container { flex: 1; min-height: 0; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: crosshair; touch-action: none; }
         .artwork-layer, #annotation-layer { position: absolute; width: 100%; height: 100%; top: 0; left: 0; object-fit: contain; transform-origin: center; pointer-events: none; }
         #artwork-image-bg { z-index: 10; transition: transform 0.1s linear, filter 0.3s ease; }
         #artwork-image-fg { z-index: 20; transition: transform 0.1s linear, clip-path 0.1s linear; }
         #annotation-layer { z-index: 30; }
 
-        #player-container { height: 100px; background: #fff; padding: 10px; }
-        #control-pane { width: 450px; background: var(--panel); display: flex; flex-direction: column; padding: 20px; overflow-y: auto; }
+        #player-container { flex: 0 0 auto; background: #fff; padding: 8px 10px; }
+        #control-pane { width: 450px; max-width: 100%; background: var(--panel); display: flex; flex-direction: column; padding: 20px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
         
         h2 { margin-top: 0; font-size: 1.2rem; color: var(--primary); }
         .section { background: #f9f9f9; padding: 12px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #eee; }
@@ -28,18 +29,31 @@
         .control-row label { flex: 0 0 80px; margin-bottom: 0; }
         .control-row input { margin-bottom: 0; }
 
-        button { padding: 8px; border: none; border-radius: 4px; background: #666; color: white; cursor: pointer; font-weight: bold; font-size: 0.8rem; }
+        .btn-row { display: flex; gap: 8px; }
+        .btn-row button { flex: 1; }
+
+        button { padding: 8px 10px; min-height: 36px; border: none; border-radius: 4px; background: #666; color: white; cursor: pointer; font-weight: bold; font-size: 0.8rem; touch-action: manipulation; }
         button.primary { background: var(--primary); width: 100%; margin-top: 5px; }
         button:hover { opacity: 0.9; }
 
         .keyframe-item { display: flex; align-items: center; gap: 8px; padding: 8px; background: white; border: 1px solid #ddd; margin-bottom: 8px; border-radius: 4px; cursor: pointer; }
         .keyframe-item.selected { border-color: var(--primary); background: #fff0f0; }
-        .kf-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; flex: 1; }
+        .kf-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; flex: 1; }
         .kf-grid div { display: flex; flex-direction: column; }
-        .kf-grid label { font-size: 0.55rem; margin: 0; color: #888; text-transform: uppercase; }
-        .kf-grid input, .kf-grid select { margin: 0; padding: 2px 4px; font-size: 0.7rem; width: 100%; }
+        .kf-grid label { font-size: 0.6rem; margin: 0; color: #888; text-transform: uppercase; }
+        .kf-grid input, .kf-grid select { margin: 0; padding: 4px 6px; font-size: 0.75rem; width: 100%; }
 
-        .hint { font-size: 0.7rem; color: #888; font-style: italic; margin-bottom: 5px; }
+        .hint { font-size: 0.75rem; color: #666; font-style: italic; margin-bottom: 8px; }
+
+        @media (max-width: 900px) {
+            body { flex-direction: column; }
+            #preview-pane { flex: 0 0 46vh; flex: 0 0 46dvh; border-right: none; border-bottom: 2px solid #ddd; }
+            #player-container { padding: 4px 6px; }
+            #control-pane { width: 100%; flex: 1 1 auto; min-height: 0; padding: 12px; }
+            input, select { font-size: 16px; min-height: 36px; }
+            .kf-grid input, .kf-grid select { font-size: 14px; min-height: 32px; }
+            button { min-height: 42px; font-size: 0.9rem; }
+        }
     </style>
 </head>
 <body>
@@ -57,7 +71,7 @@
         <h2>Professional Editor</h2>
 
         <div class="section">
-            <p class="hint">Shortcut: <b>Ctrl+Z</b> Undo vertex. <b>Click</b> Art to set focus/add point.</p>
+            <p class="hint">Shortcut: <b>Ctrl+Z</b> Undo vertex. <b>Tap/Click</b> Art to set focus/add point.</p>
             <label>Marker Type</label>
             <select id="prop-type">
                 <option value="circle">Circle (Pulse)</option>
@@ -89,7 +103,10 @@
                 <input type="number" id="prop-vsize" value="1.5" min="0.1" max="10" step="0.1">
             </div>
             
-            <button id="clear-points" style="background:#888; font-size:0.7rem; width:100%">Clear Polygon Points</button>
+            <div class="btn-row">
+                <button id="undo-point" style="background:#777; font-size:0.75rem;">Undo Last Point</button>
+                <button id="clear-points" style="background:#888; font-size:0.75rem;">Clear Points</button>
+            </div>
         </div>
 
         <div class="section">
@@ -113,6 +130,7 @@
         const propUI = { type: document.getElementById('prop-type'), effect: document.getElementById('prop-effect'), color: document.getElementById('prop-color'), alpha: document.getElementById('prop-alpha'), thickness: document.getElementById('prop-thickness'), vSize: document.getElementById('prop-vsize') };
 
         const player = new Player({ container: () => document.querySelector("#player"), audio: { src: "demo.mp3" } });
+        window.player = player;
 
         // Sync Prop UI -> State
         Object.keys(propUI).forEach(k => {
@@ -137,9 +155,10 @@
             if (selectedIdx === -1) return;
             isDragging = true;
             const loc = getLocalCoords(e), kf = activeKeyframes[selectedIdx];
+            const hitRadius = e.pointerType === 'touch' ? 6 : 3;
             if (kf.type === 'polygon') {
                 if (!kf.points) kf.points = [];
-                draggingPointIdx = kf.points.findIndex(p => Math.abs(p.x - loc.x) < 3 && Math.abs(p.y - loc.y) < 3);
+                draggingPointIdx = kf.points.findIndex(p => Math.abs(p.x - loc.x) < hitRadius && Math.abs(p.y - loc.y) < hitRadius);
                 if (draggingPointIdx === -1) { kf.points.push(loc); draggingPointIdx = kf.points.length - 1; }
             } else { kf.x = loc.x; kf.y = loc.y; }
             render(); viewport.setPointerCapture(e.pointerId);
@@ -151,13 +170,16 @@
             else { kf.x = loc.x; kf.y = loc.y; }
             render();
         };
-        window.onpointerup = () => { isDragging = false; draggingPointIdx = -1; };
+        const stopDragging = () => { isDragging = false; draggingPointIdx = -1; };
+        window.onpointerup = stopDragging;
+        window.onpointercancel = stopDragging;
 
         document.getElementById('add-keyframe').onclick = () => {
             const kf = { time: parseFloat(player.currentTime.toFixed(2)), x: 50, y: 50, zoom: 1.0, type: propUI.type.value, effect: propUI.effect.value, color: propUI.color.value, alpha: parseFloat(propUI.alpha.value), thickness: parseFloat(propUI.thickness.value), vSize: parseFloat(propUI.vSize.value), easing: 'linear', points: [] };
             activeKeyframes.push(kf); activeKeyframes.sort((a,b)=>a.time-b.time); selectedIdx = activeKeyframes.indexOf(kf); render();
         };
 
+        document.getElementById('undo-point').onclick = () => { if (selectedIdx !== -1 && activeKeyframes[selectedIdx].points && activeKeyframes[selectedIdx].points.length > 0) { activeKeyframes[selectedIdx].points.pop(); render(); } };
         document.getElementById('clear-points').onclick = () => { if (selectedIdx !== -1) { activeKeyframes[selectedIdx].points = []; render(); } };
 
         window.addEventListener('keydown', (e) => {
@@ -190,7 +212,7 @@
                 inps[3].onchange=(e)=>{ kf.x=parseFloat(e.target.value); render(); };
                 inps[4].onchange=(e)=>{ kf.y=parseFloat(e.target.value); render(); };
 
-                const del = document.createElement('button'); del.textContent = '×'; del.style.cssText = 'background:#ff4747; color:white; width:22px; padding:0; flex:none';
+                const del = document.createElement('button'); del.textContent = '×'; del.style.cssText = 'background:#ff4747; color:white; min-width:34px; min-height:34px; padding:0; flex:none';
                 del.onclick = (e) => { e.stopPropagation(); activeKeyframes.splice(i,1); selectedIdx=-1; render(); };
                 item.appendChild(grid); item.appendChild(del); list.appendChild(item);
             });
@@ -238,7 +260,7 @@
         const lerp = (a, b, t) => a + (b - a) * t;
         const ease = (t, type) => (type === 'ease-in') ? t*t : (type === 'ease-out') ? t*(2-t) : t;
         setInterval(() => {
-            if (!player.paused && activeKeyframes.length > 1 && !isDragging) {
+            if (player.audio && !player.audio.paused && activeKeyframes.length > 1 && !isDragging) {
                 const t = player.currentTime;
                 let k1 = null, k2 = null;
                 for(let i=0; i<activeKeyframes.length-1; i++) {
