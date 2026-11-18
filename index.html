@@ -271,7 +271,7 @@
 
         const player = new Player({
           container: () => document.querySelector("#player"),
-          audio: { src: "demo.mp3", title: "E-MUSE Audioguide" },
+          audio: { src: "demo.mp3", title: "Il Giardino Ducale", artist: "Guido Carmignani" },
           themeColor: "#954747",
         });
 
@@ -550,18 +550,34 @@
               points: Array.isArray(k.points) ? k.points : []
             });
 
-            const projectUrl = new URLSearchParams(window.location.search).get('project') || 'audioguide.json';
-            const pRes = await fetch(projectUrl).catch(() => ({ ok: false }));
-            let projectData = null;
-            if (pRes.ok) {
-              projectData = await pRes.json();
+            let projectData = window.__EMBEDDED_PROJECT__ || null;
+            if (!projectData && window.location.hash.startsWith('#project=')) {
+              try {
+                const b64 = window.location.hash.slice(9).replace(/-/g, '+').replace(/_/g, '/');
+                const bin = atob(b64);
+                const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+                projectData = JSON.parse(new TextDecoder().decode(bytes));
+              } catch (err) { console.error('Invalid project hash:', err); }
+            }
+            if (!projectData) {
+              const projectUrl = new URLSearchParams(window.location.search).get('project') || 'audioguide.json';
+              const pRes = await fetch(projectUrl).catch(() => ({ ok: false }));
+              if (pRes.ok) projectData = await pRes.json();
+            }
+            if (projectData) {
               if (projectData.metadata) {
                 const m = projectData.metadata;
                 if (m.title) {
                   document.getElementById('artwork-title').textContent = m.title;
                   document.title = `${m.title} | E-MUSE`;
+                  const shkTitle = document.querySelector('#player .shk-title');
+                  if (shkTitle) shkTitle.textContent = m.title;
                 }
-                if (m.artist) document.getElementById('artwork-artist').textContent = m.artist;
+                if (m.artist) {
+                  document.getElementById('artwork-artist').textContent = m.artist;
+                  const shkArtist = document.querySelector('#player .shk-artist');
+                  if (shkArtist) shkArtist.textContent = m.artist;
+                }
                 if (m.language) document.documentElement.lang = m.language;
               }
               if (Array.isArray(projectData.mediaCues)) {

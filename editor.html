@@ -269,6 +269,10 @@
             <button id="export-project" class="primary" style="background:var(--primary); margin-top: 0">Export Project</button>
             <button id="export-json" class="primary" style="background:#333; margin-top: 0">Export Annotations</button>
         </div>
+        <div class="btn-row" style="margin-top: 6px;">
+            <button id="publish-link" style="background:#1d4ed8">Publish Link</button>
+            <button id="publish-html" style="background:#0f766e">Publish HTML Page</button>
+        </div>
         <input type="file" id="import-file" accept=".json,application/json" style="display:none">
     </div>
 
@@ -331,8 +335,27 @@
         });
         const propUI = { type: document.getElementById('prop-type'), effect: document.getElementById('prop-effect'), color: document.getElementById('prop-color'), alpha: document.getElementById('prop-alpha'), thickness: document.getElementById('prop-thickness'), vSize: document.getElementById('prop-vsize') };
 
-        const player = new Player({ container: () => document.querySelector("#player"), audio: { src: "demo.mp3" } });
+        const player = new Player({
+            container: () => document.querySelector("#player"),
+            audio: {
+                src: "demo.mp3",
+                title: document.getElementById('meta-title').value || 'Untitled',
+                artist: document.getElementById('meta-artist').value || 'Unknown Artist'
+            }
+        });
         window.player = player;
+
+        function syncPlayerMetadata() {
+            const title = document.getElementById('meta-title').value || 'Untitled';
+            const artist = document.getElementById('meta-artist').value || 'Unknown Artist';
+            const tEl = document.querySelector('#player .shk-title');
+            const aEl = document.querySelector('#player .shk-artist');
+            if (tEl) tEl.textContent = title;
+            if (aEl) aEl.textContent = artist;
+        }
+        document.getElementById('meta-title').addEventListener('input', syncPlayerMetadata);
+        document.getElementById('meta-artist').addEventListener('input', syncPlayerMetadata);
+        syncPlayerMetadata();
 
         // Sync Prop UI -> State
         Object.keys(propUI).forEach(k => {
@@ -935,6 +958,7 @@
             activeKeyframes = annotationTracks[0].keyframes;
             selectedIdx = activeKeyframes.length > 0 ? 0 : -1;
             if (selectedIdx !== -1) Object.keys(propUI).forEach(k => propUI[k].value = activeKeyframes[0][k]);
+            syncPlayerMetadata();
             render();
         }
 
@@ -957,8 +981,8 @@
             importInput.value = '';
         };
 
-        document.getElementById('export-project').onclick = () => {
-            const project = {
+        function buildProject() {
+            return {
                 version: 1,
                 metadata: {
                     title: document.getElementById('meta-title').value,
@@ -971,8 +995,41 @@
                 textCues,
                 annotations: annotationTracks.filter(a => a.keyframes.length > 0).map(a => ({ name: a.name, keyframes: a.keyframes }))
             };
-            const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
+        }
+
+        document.getElementById('export-project').onclick = () => {
+            const blob = new Blob([JSON.stringify(buildProject(), null, 2)], { type: 'application/json' });
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'audioguide.json'; a.click();
+        };
+
+        document.getElementById('publish-link').onclick = async () => {
+            const json = JSON.stringify(buildProject());
+            const bytes = new TextEncoder().encode(json);
+            let bin = '';
+            bytes.forEach(b => { bin += String.fromCharCode(b); });
+            const b64 = btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            const url = new URL('index.html', window.location.href);
+            url.hash = `project=${b64}`;
+            const shareUrl = url.toString();
+            try { await navigator.clipboard.writeText(shareUrl); } catch (_) {}
+            window.open(shareUrl, '_blank');
+        };
+
+        document.getElementById('publish-html').onclick = async () => {
+            try {
+                const res = await fetch('index.html');
+                if (!res.ok) return alert('Could not fetch index.html template');
+                let html = await res.text();
+                const baseHref = new URL('./', window.location.href).toString();
+                const project = buildProject();
+                const inject = `<base href="${baseHref}">\n<script>window.__EMBEDDED_PROJECT__ = ${JSON.stringify(project).replace(/</g, '\\u003c')};<\/script>`;
+                html = html.replace('<head>', `<head>\n${inject}`);
+                const slug = (project.metadata.title || 'audioguide').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'audioguide';
+                const blob = new Blob([html], { type: 'text/html' });
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${slug}.html`; a.click();
+            } catch (err) {
+                alert('Error generating HTML page: ' + err.message);
+            }
         };
 
         document.getElementById('export-json').onclick = () => {
