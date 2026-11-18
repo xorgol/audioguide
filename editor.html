@@ -12,7 +12,8 @@
 
         #preview-pane { flex: 1; min-width: 0; display: flex; flex-direction: column; border-right: 2px solid #ddd; background: #000; }
         #viewport-container { flex: 1; min-height: 0; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: crosshair; touch-action: none; }
-        .artwork-layer, #annotation-layer { position: absolute; width: 100%; height: 100%; top: 0; left: 0; object-fit: contain; transform-origin: center; pointer-events: none; }
+        #artwork-stage { position: relative; width: 100%; height: 100%; }
+        .artwork-layer, #annotation-layer { position: absolute; width: 100%; height: 100%; top: 0; left: 0; object-fit: fill; transform-origin: center; pointer-events: none; }
         #artwork-image-bg { z-index: 10; transition: transform 0.1s linear, filter 0.3s ease; }
         #artwork-image-fg { z-index: 20; transition: transform 0.1s linear, clip-path 0.1s linear; }
         #annotation-layer { z-index: 30; }
@@ -60,9 +61,11 @@
 
     <div id="preview-pane">
         <div id="viewport-container">
-            <img id="artwork-image-bg" class="artwork-layer" src="carmignano.png">
-            <img id="artwork-image-fg" class="artwork-layer" src="carmignano.png">
-            <svg id="annotation-layer" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+            <div id="artwork-stage">
+                <img id="artwork-image-bg" class="artwork-layer" src="carmignano.png">
+                <img id="artwork-image-fg" class="artwork-layer" src="carmignano.png">
+                <svg id="annotation-layer" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+            </div>
         </div>
         <div id="player-container"><div id="player"></div></div>
     </div>
@@ -115,7 +118,12 @@
             <button class="primary" id="add-keyframe">+ Add Keyframe</button>
         </div>
 
-        <button id="export-json" class="primary" style="background:#333; margin-top: auto">Export annotations.json</button>
+        <div class="btn-row" style="margin-top: auto">
+            <button id="load-default-json" style="background:#555">Load Default</button>
+            <button id="import-json" style="background:#555">Import JSON</button>
+            <button id="export-json" class="primary" style="background:#333; margin-top: 0">Export JSON</button>
+        </div>
+        <input type="file" id="import-file" accept=".json,application/json" style="display:none">
     </div>
 
     <script type="module">
@@ -126,7 +134,22 @@
         let isDragging = false;
         let draggingPointIdx = -1;
 
-        const bg = document.getElementById('artwork-image-bg'), fg = document.getElementById('artwork-image-fg'), svg = document.getElementById('annotation-layer'), list = document.getElementById('keyframe-list'), viewport = document.getElementById('viewport-container');
+        const bg = document.getElementById('artwork-image-bg'), fg = document.getElementById('artwork-image-fg'), svg = document.getElementById('annotation-layer'), list = document.getElementById('keyframe-list'), viewport = document.getElementById('viewport-container'), stage = document.getElementById('artwork-stage');
+        let stageAspect = 1;
+
+        function fitStage() {
+            const cw = viewport.clientWidth, ch = viewport.clientHeight;
+            const natW = bg.naturalWidth, natH = bg.naturalHeight;
+            if (!cw || !ch || !natW || !natH) return;
+            const scale = Math.min(cw / natW, ch / natH);
+            const fw = natW * scale, fh = natH * scale;
+            stage.style.width = `${fw}px`;
+            stage.style.height = `${fh}px`;
+            stageAspect = fw / fh;
+        }
+        new ResizeObserver(fitStage).observe(viewport);
+        bg.addEventListener('load', fitStage);
+        fitStage();
         const propUI = { type: document.getElementById('prop-type'), effect: document.getElementById('prop-effect'), color: document.getElementById('prop-color'), alpha: document.getElementById('prop-alpha'), thickness: document.getElementById('prop-thickness'), vSize: document.getElementById('prop-vsize') };
 
         const player = new Player({ container: () => document.querySelector("#player"), audio: { src: "demo.mp3" } });
@@ -144,7 +167,7 @@
         });
 
         function getLocalCoords(e) {
-            const rect = viewport.getBoundingClientRect();
+            const rect = stage.getBoundingClientRect();
             return {
                 x: parseFloat(Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100)).toFixed(1)),
                 y: parseFloat(Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100)).toFixed(1))
@@ -188,6 +211,58 @@
             }
         });
 
+        function drawAnnotation(s, showHandles) {
+            svg.innerHTML = '';
+            if (!s) {
+                bg.style.filter = 'none'; fg.style.clipPath = 'none';
+                bg.style.transform = fg.style.transform = svg.style.transform = 'scale(1) translate(0,0)';
+                return;
+            }
+            const hex = s.color || '#ffd700';
+            const alpha = s.alpha ?? 1;
+            const col = `rgba(${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)},${alpha})`;
+            const mx = (50 - s.x) * s.zoom, my = (50 - s.y) * s.zoom;
+            bg.style.transform = fg.style.transform = svg.style.transform = `scale(${s.zoom}) translate(${mx}%, ${my}%)`;
+            bg.style.filter = s.effect === 'blur' ? 'blur(8px) brightness(0.8)' : s.effect === 'grayscale' ? 'grayscale(1) opacity(0.7)' : 'none';
+
+            if (s.type === 'polygon' && s.points && s.points.length > 2) fg.style.clipPath = `polygon(${s.points.map(p=>`${p.x}% ${p.y}%`).join(', ')})`;
+            else if (s.type === 'circle') fg.style.clipPath = `circle(10% at ${s.x}% ${s.y}%)`;
+            else fg.style.clipPath = 'none';
+
+            if ((s.thickness ?? 2) > 0) {
+                if (s.type === 'circle') {
+                    const c = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+                    c.setAttribute("cx", s.x); c.setAttribute("cy", s.y);
+                    c.setAttribute("rx", (5 / Math.sqrt(stageAspect)).toFixed(2));
+                    c.setAttribute("ry", (5 * Math.sqrt(stageAspect)).toFixed(2));
+                    c.setAttribute("fill", "none"); c.setAttribute("stroke", col); c.setAttribute("stroke-width", s.thickness);
+                    c.setAttribute("vector-effect", "non-scaling-stroke");
+                    svg.appendChild(c);
+                } else if (s.type === 'pointer') {
+                    const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                    l.setAttribute("x1", s.x + 3); l.setAttribute("y1", s.y + 3); l.setAttribute("x2", s.x); l.setAttribute("y2", s.y);
+                    l.setAttribute("stroke", col); l.setAttribute("stroke-width", s.thickness);
+                    l.setAttribute("vector-effect", "non-scaling-stroke");
+                    svg.appendChild(l);
+                } else if (s.type === 'polygon' && s.points) {
+                    const p = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+                    p.setAttribute("points", s.points.map(pt=>`${pt.x},${pt.y}`).join(' '));
+                    p.setAttribute("fill", "none"); p.setAttribute("stroke", col); p.setAttribute("stroke-width", s.thickness);
+                    p.setAttribute("vector-effect", "non-scaling-stroke");
+                    svg.appendChild(p);
+                }
+            }
+            if (showHandles && s.type === 'polygon' && s.points) {
+                s.points.forEach(pt => {
+                    const h = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+                    h.setAttribute("cx", pt.x); h.setAttribute("cy", pt.y);
+                    h.setAttribute("rx", ((s.vSize ?? 1.5) / Math.sqrt(stageAspect)).toFixed(2));
+                    h.setAttribute("ry", ((s.vSize ?? 1.5) * Math.sqrt(stageAspect)).toFixed(2));
+                    h.setAttribute("fill", col); svg.appendChild(h);
+                });
+            }
+        }
+
         function render() {
             // Sidebar
             list.innerHTML = '';
@@ -218,43 +293,7 @@
             });
 
             // Canvas
-            svg.innerHTML = '';
-            if (selectedIdx === -1) { bg.style.filter = 'none'; fg.style.clipPath = 'none'; bg.style.transform = fg.style.transform = svg.style.transform = 'scale(1) translate(0,0)'; return; }
-
-            const kf = activeKeyframes[selectedIdx], col = `rgba(${parseInt(kf.color.slice(1,3),16)},${parseInt(kf.color.slice(3,5),16)},${parseInt(kf.color.slice(5,7),16)},${kf.alpha})`;
-            const mx = (50 - kf.x) * kf.zoom, my = (50 - kf.y) * kf.zoom;
-            bg.style.transform = fg.style.transform = svg.style.transform = `scale(${kf.zoom}) translate(${mx}%, ${my}%)`;
-            bg.style.filter = kf.effect === 'blur' ? 'blur(8px) brightness(0.8)' : kf.effect === 'grayscale' ? 'grayscale(1) opacity(0.7)' : 'none';
-
-            if (kf.type === 'polygon' && kf.points && kf.points.length > 2) fg.style.clipPath = `polygon(${kf.points.map(p=>`${p.x}% ${p.y}%`).join(', ')})`;
-            else if (kf.type === 'circle') fg.style.clipPath = `circle(10% at ${kf.x}% ${kf.y}%)`;
-            else fg.style.clipPath = 'none';
-
-            if (kf.thickness > 0) {
-                if (kf.type === 'circle') {
-                    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-                    c.setAttribute("cx", kf.x); c.setAttribute("cy", kf.y); c.setAttribute("r", "5");
-                    c.setAttribute("fill", "none"); c.setAttribute("stroke", col); c.setAttribute("stroke-width", kf.thickness);
-                    svg.appendChild(c);
-                } else if (kf.type === 'pointer') {
-                    const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
-                    l.setAttribute("x1", kf.x + 3); l.setAttribute("y1", kf.y + 3); l.setAttribute("x2", kf.x); l.setAttribute("y2", kf.y);
-                    l.setAttribute("stroke", col); l.setAttribute("stroke-width", kf.thickness);
-                    svg.appendChild(l);
-                } else if (kf.type === 'polygon' && kf.points) {
-                    const p = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-                    p.setAttribute("points", kf.points.map(pt=>`${pt.x},${pt.y}`).join(' '));
-                    p.setAttribute("fill", "none"); p.setAttribute("stroke", col); p.setAttribute("stroke-width", kf.thickness);
-                    svg.appendChild(p);
-                }
-            }
-            if (kf.type === 'polygon' && kf.points) {
-                kf.points.forEach(pt => {
-                    const h = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-                    h.setAttribute("cx", pt.x); h.setAttribute("cy", pt.y); h.setAttribute("r", kf.vSize);
-                    h.setAttribute("fill", col); svg.appendChild(h);
-                });
-            }
+            drawAnnotation(selectedIdx === -1 ? null : activeKeyframes[selectedIdx], true);
         }
 
         const lerp = (a, b, t) => a + (b - a) * t;
@@ -267,17 +306,52 @@
                     if (t >= activeKeyframes[i].time && t <= activeKeyframes[i+1].time) { k1 = activeKeyframes[i]; k2 = activeKeyframes[i+1]; break; }
                 }
                 if (k1 && k2) {
-                    const alpha = ease((t - k1.time) / (k2.time - k1.time), k1.easing);
-                    const cx = lerp(k1.x, k2.x, alpha), cy = lerp(k1.y, k2.y, alpha), cz = lerp(k1.zoom, k2.zoom, alpha);
-                    const mx = (50 - cx) * cz, my = (50 - cy) * cz;
-                    bg.style.transform = fg.style.transform = svg.style.transform = `scale(${cz}) translate(${mx}%, ${my}%)`;
-                    if (k1.type === 'polygon' && k1.points && k2.points && k1.points.length === k2.points.length) {
-                        const pts = k1.points.map((p, idx) => ({ x: lerp(p.x, k2.points[idx].x, alpha), y: lerp(p.y, k2.points[idx].y, alpha) }));
-                        fg.style.clipPath = `polygon(${pts.map(p => `${p.x}% ${p.y}%`).join(', ')})`;
-                    } else if (k1.type === 'circle') fg.style.clipPath = `circle(10% at ${cx}% ${cy}%)`;
+                    const duration = k2.time - k1.time;
+                    const alpha = duration > 0 ? ease((t - k1.time) / duration, k1.easing) : 1;
+                    const state = {
+                        type: k1.type, color: k1.color, alpha: k1.alpha, thickness: k1.thickness, effect: k1.effect, vSize: k1.vSize,
+                        x: lerp(k1.x, k2.x, alpha), y: lerp(k1.y, k2.y, alpha), zoom: lerp(k1.zoom, k2.zoom, alpha),
+                        points: (k1.type === 'polygon' && k1.points && k2.points && k1.points.length === k2.points.length)
+                            ? k1.points.map((p, idx) => ({ x: lerp(p.x, k2.points[idx].x, alpha), y: lerp(p.y, k2.points[idx].y, alpha) }))
+                            : k1.points
+                    };
+                    drawAnnotation(state, false);
+                } else {
+                    drawAnnotation(null, false);
                 }
             }
         }, 33);
+
+        function loadAnnotationsData(data) {
+            const raw = Array.isArray(data) && data.length > 0 && data[0].keyframes ? data[0].keyframes : Array.isArray(data) ? data : [];
+            activeKeyframes = raw.map(k => ({
+                time: k.time ?? 0, x: k.x ?? 50, y: k.y ?? 50, zoom: k.zoom ?? 1,
+                type: k.type ?? 'circle', effect: k.effect ?? 'none', color: k.color ?? '#ffd700',
+                alpha: k.alpha ?? 1, thickness: k.thickness ?? 2, vSize: k.vSize ?? 1.5,
+                easing: k.easing ?? 'linear', points: Array.isArray(k.points) ? k.points : []
+            })).sort((a, b) => a.time - b.time);
+            selectedIdx = activeKeyframes.length > 0 ? 0 : -1;
+            if (selectedIdx !== -1) Object.keys(propUI).forEach(k => propUI[k].value = activeKeyframes[0][k]);
+            render();
+        }
+
+        document.getElementById('load-default-json').onclick = async () => {
+            try {
+                const res = await fetch('annotations.json');
+                if (!res.ok) return alert('Could not load annotations.json');
+                loadAnnotationsData(await res.json());
+            } catch (e) { alert('Error loading annotations.json'); }
+        };
+
+        const importInput = document.getElementById('import-file');
+        document.getElementById('import-json').onclick = () => importInput.click();
+        importInput.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            try { loadAnnotationsData(JSON.parse(await file.text())); }
+            catch (err) { alert('Invalid JSON file'); }
+            importInput.value = '';
+        };
 
         document.getElementById('export-json').onclick = () => {
             if (activeKeyframes.length === 0) return alert("Add keyframes!");
