@@ -266,6 +266,8 @@
         let activeMediaType = 'image';
 
         const bg = document.getElementById('artwork-image-bg'), fg = document.getElementById('artwork-image-fg'), bgVid = document.getElementById('artwork-video-bg'), fgVid = document.getElementById('artwork-video-fg'), model3d = document.getElementById('artwork-model-3d'), svg = document.getElementById('annotation-layer'), list = document.getElementById('keyframe-list'), viewport = document.getElementById('viewport-container'), stage = document.getElementById('artwork-stage');
+        const tlCanvas = document.getElementById('timeline-canvas'), tlRuler = document.getElementById('tl-ruler'), tlMedia = document.getElementById('tl-track-media'), tlAudio = document.getElementById('tl-track-audio'), tlFx = document.getElementById('tl-track-fx'), tlPlayhead = document.getElementById('tl-playhead'), tlTimeLbl = document.getElementById('tl-time'), tlZoomInp = document.getElementById('tl-zoom');
+        let pxPerSec = parseFloat(tlZoomInp.value) || 14;
         let stageAspect = 1;
 
         function fitStage() {
@@ -786,15 +788,6 @@
         renderAudioTracks();
 
         // Multi-Track Timeline Logic
-        const tlCanvas = document.getElementById('timeline-canvas');
-        const tlRuler = document.getElementById('tl-ruler');
-        const tlMedia = document.getElementById('tl-track-media');
-        const tlAudio = document.getElementById('tl-track-audio');
-        const tlFx = document.getElementById('tl-track-fx');
-        const tlPlayhead = document.getElementById('tl-playhead');
-        const tlTimeLbl = document.getElementById('tl-time');
-        const tlZoomInp = document.getElementById('tl-zoom');
-        let pxPerSec = parseFloat(tlZoomInp.value) || 14;
 
         function getTimelineDuration() {
             const audioDur = (player.audio && isFinite(player.audio.duration)) ? player.audio.duration : 60;
