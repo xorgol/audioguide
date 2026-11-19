@@ -29,4 +29,36 @@ test.describe('Annotation Editor Functional Tests', () => {
 
     expect(download.suggestedFilename()).toBe('annotations.json');
   });
+
+  test('should support copy, cut, paste keyframes and simultaneous layers', async ({ page }) => {
+    await page.locator('#add-keyframe').click();
+    await page.locator('#copy-kf').click();
+    await page.locator('#paste-kf').click();
+    await expect(page.locator('.keyframe-item')).toHaveCount(2);
+
+    await page.locator('#cut-kf').click();
+    await expect(page.locator('.keyframe-item')).toHaveCount(1);
+
+    await page.locator('#add-anno-layer').click();
+    await page.locator('#add-keyframe').click();
+    await expect(page.locator('#anno-layer-select option')).toHaveCount(2);
+  });
+
+  test('should add media, text, and voice synth cues to multitrack timeline and export project', async ({ page }) => {
+    await page.click('.tab-btn[data-tab="media"]');
+    await page.click('#add-media-3d');
+    await page.click('.tab-btn[data-tab="text"]');
+    await page.click('#add-text-cue');
+    await page.click('.tab-btn[data-tab="audio"]');
+    await page.fill('#tts-text', 'Welcome to the garden');
+    await page.click('#tts-add');
+
+    await expect(page.locator('#tl-lanes .tl-lane')).toHaveCount(6);
+
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.locator('#export-project').click(),
+    ]);
+    expect(download.suggestedFilename()).toBe('audioguide.json');
+  });
 });

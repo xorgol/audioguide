@@ -173,8 +173,12 @@
         <h1 id="artwork-title" style="margin:0; font-size: 1.1rem;">Il Giardino Ducale</h1>
         <p id="artwork-artist" style="margin: 0; font-size: 0.8rem; color: #666;">Guido Carmignani</p>
       </div>
-      <button id="toggle-display" class="mode-toggle">Switch to Transcript</button>
+      <div style="display:flex; gap:6px; align-items:center;">
+        <button id="toggle-info" class="mode-toggle hidden" style="background:#555;">Info</button>
+        <button id="toggle-display" class="mode-toggle">Switch to Transcript</button>
+      </div>
     </header>
+    <div id="info-drawer" class="hidden" style="background:#fafafa; border-bottom:1px solid #eee; padding:10px 16px; font-size:0.9rem; color:#444;"></div>
 
     <main id="main-content">
       <div class="image-container" id="image-container">
@@ -380,8 +384,28 @@
             if (isPaused) { artworkBgVid.pause(); artworkFgVid.pause(); } else { artworkBgVid.play().catch(()=>{}); artworkFgVid.play().catch(()=>{}); }
           }
 
-          // 2b. Extra Audio Tracks Sync
+          // 2b. Extra Audio Tracks Sync (including TTS)
           extraAudioTracks.forEach(tr => {
+            if (tr.type === 'tts') {
+              const dur = tr.duration > 0 ? tr.duration : Math.max(2, (tr.ttsText || '').length * 0.08);
+              const inRange = currentTime >= tr.start && currentTime <= tr.start + dur;
+              if (inRange && !isPaused) {
+                if (!tr._spoken && 'speechSynthesis' in window && tr.ttsText) {
+                  tr._spoken = true;
+                  window.speechSynthesis.cancel();
+                  const u = new SpeechSynthesisUtterance(tr.ttsText);
+                  u.rate = tr.rate || 1;
+                  if (tr.voiceURI) {
+                    const v = window.speechSynthesis.getVoices().find(x => x.voiceURI === tr.voiceURI);
+                    if (v) u.voice = v;
+                  }
+                  window.speechSynthesis.speak(u);
+                }
+              } else {
+                tr._spoken = false;
+              }
+              return;
+            }
             const dur = tr.duration > 0 ? tr.duration : (tr.el.duration || 0);
             const inRange = currentTime >= tr.start && (dur <= 0 || currentTime <= tr.start + dur);
             if (inRange && !isPaused) {
@@ -427,7 +451,9 @@
               const st = {
                 type: k1.type, color: k1.color, alpha: k1.alpha, thickness: k1.thickness, effect: k1.effect,
                 x: lerp(k1.x, k2.x, alpha), y: lerp(k1.y, k2.y, alpha), zoom: lerp(k1.zoom, k2.zoom, alpha),
-                radius: lerp(k1.radius ?? 5, k2.radius ?? 5, alpha)
+                radius: lerp(k1.radius ?? 5, k2.radius ?? 5, alpha),
+                cameraOrbit: alpha < 0.5 ? k1.cameraOrbit : (k2.cameraOrbit || k1.cameraOrbit),
+                cameraTarget: alpha < 0.5 ? k1.cameraTarget : (k2.cameraTarget || k1.cameraTarget)
               };
               if (k1.type === 'polygon' && k1.points && k2.points && k1.points.length === k2.points.length) {
                 st.points = k1.points.map((p1, idx) => ({ x: lerp(p1.x, k2.points[idx].x, alpha), y: lerp(p1.y, k2.points[idx].y, alpha) }));
@@ -454,6 +480,10 @@
 
           annotationLayer.innerHTML = '';
           const primary = states[0];
+          if (activeMediaType === 'model3d') {
+            if (primary.cameraOrbit) artworkModel3d.setAttribute('camera-orbit', primary.cameraOrbit);
+            if (primary.cameraTarget) artworkModel3d.setAttribute('camera-target', primary.cameraTarget);
+          }
           const mx = (50 - primary.x) * primary.zoom, my = (50 - primary.y) * primary.zoom;
           const trans = `scale(${primary.zoom}) translate(${mx}%, ${my}%)`;
           bgLayer.style.transform = fgLayer.style.transform = annotationLayer.style.transform = trans;
@@ -589,6 +619,28 @@
                   if (shkArtist) shkArtist.textContent = m.artist;
                 }
                 if (m.language) document.documentElement.lang = m.language;
+                if (m.description) {
+                  const infoBtn = document.getElementById('toggle-info');
+                  const infoDrawer = document.getElementById('info-drawer');
+                  infoDrawer.textContent = m.description;
+                  infoBtn.classList.remove('hidden');
+                  infoBtn.onclick = () => infoDrawer.classList.toggle('hidden');
+                }
+              }
+              if (projectData.timing && Array.isArray(projectData.timing.words)) {
+                timingData = projectData.timing;
+                transcriptContent.innerHTML = '';
+                const p = document.createElement('p');
+                timingData.words.forEach((w) => {
+                  const span = document.createElement('span');
+                  span.className = 'word';
+                  span.dataset.start = w.start;
+                  span.dataset.end = w.end;
+                  span.textContent = w.word + (w.word.endsWith("'") || w.word.endsWith("’") ? '' : ' ');
+                  span.onclick = async () => { player.seek(w.start); try { await player.play(); } catch(e) {} };
+                  p.appendChild(span);
+                });
+                transcriptContent.appendChild(p);
               }
               if (Array.isArray(projectData.mediaCues)) {
                 mediaCues = projectData.mediaCues;
@@ -602,6 +654,7 @@
                   player.audio.src = firstTrack.src;
                 }
                 extraAudioTracks = projectData.audioTracks.slice(1).map(tr => {
+                  if (tr.type === 'tts') return { ...tr, el: null, _spoken: false };
                   const el = new Audio(tr.src);
                   el.preload = 'auto';
                   return { ...tr, el };

@@ -152,7 +152,14 @@
     </div>
 
     <div id="control-pane">
-        <h2>Audioguide Studio</h2>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:10px;">
+            <h2 style="margin:0;">Audioguide Studio</h2>
+            <div style="display:flex; gap:4px;">
+                <button id="undo-action" type="button" title="Undo (Ctrl+Z)" style="background:#555; padding:4px 8px; min-height:30px; font-size:0.72rem;">Undo</button>
+                <button id="redo-action" type="button" title="Redo (Ctrl+Y)" style="background:#555; padding:4px 8px; min-height:30px; font-size:0.72rem;">Redo</button>
+                <button id="new-project" type="button" title="Clear autosave & start fresh" style="background:#888; padding:4px 8px; min-height:30px; font-size:0.72rem;">New</button>
+            </div>
+        </div>
 
         <div class="tabs" role="tablist">
             <button class="tab-btn active" data-tab="annotate">Annotate</button>
@@ -206,6 +213,7 @@
                     <button id="undo-point" style="background:#777; font-size:0.75rem;">Undo Last Point</button>
                     <button id="clear-points" style="background:#888; font-size:0.75rem;">Clear Points</button>
                 </div>
+                <button id="capture-3d-cam" type="button" style="background:#5a4b88; width:100%; margin-top:6px; font-size:0.75rem;">Capture 3D Camera Orbit</button>
             </div>
 
             <div class="section">
@@ -251,10 +259,23 @@
                 <p class="hint">Layer or sequence multiple audio sources on the timeline, then mix or export.</p>
                 <div id="audio-track-list"></div>
                 <div class="btn-row" style="margin-bottom:8px;">
-                    <button id="add-audio-track" style="background:var(--primary)">+ Add Audio Source</button>
-                    <button id="mix-export-wav" style="background:#2d6a4f">Mix &amp; Export WAV</button>
+                    <button id="add-audio-track" style="background:var(--primary)">+ Audio Source</button>
+                    <button id="record-mic" type="button" style="background:#b91c1c">Record Mic</button>
+                    <button id="mix-export-wav" style="background:#2d6a4f">Mix WAV</button>
                 </div>
                 <input type="file" id="audio-file-picker" accept="audio/*" style="display:none">
+            </div>
+            <div class="section">
+                <label for="tts-text">Voice Synth (Text-to-Speech)</label>
+                <textarea id="tts-text" rows="2" placeholder="Text to synthesize on the audio timeline..."></textarea>
+                <div class="cue-grid" style="margin-bottom:8px;">
+                    <div><label for="tts-voice">Voice</label><select id="tts-voice"></select></div>
+                    <div><label for="tts-rate">Speed</label><input type="number" id="tts-rate" value="1" min="0.5" max="2" step="0.1"></div>
+                </div>
+                <div class="btn-row">
+                    <button id="tts-preview" type="button" style="background:#555">Preview Voice</button>
+                    <button id="tts-add" type="button" style="background:#4b6b88">+ Add to Timeline</button>
+                </div>
             </div>
         </div>
 
@@ -263,6 +284,12 @@
                 <p class="hint">Add timed text overlays or captions to the timeline.</p>
                 <div id="text-cue-list"></div>
                 <button id="add-text-cue" class="primary">+ Add Text Cue</button>
+            </div>
+            <div class="section">
+                <label>Subtitles / Transcript (.vtt or timing.json)</label>
+                <p id="captions-status" class="hint">No captions loaded (player falls back to timing.json).</p>
+                <button id="import-captions" type="button" style="background:#4b6b88; width:100%;">Import .vtt / timing.json</button>
+                <input type="file" id="captions-file-picker" accept=".vtt,.json,text/vtt,application/json" style="display:none">
             </div>
         </div>
 
@@ -296,8 +323,13 @@
             { id: 'track-1', name: 'Main Narration', src: 'demo.mp3', start: 0, trimStart: 0, duration: 0, volume: 1, el: null }
         ];
         let textCues = [];
+        let projectTiming = null;
         let activeCueKey = '';
         let activeMediaType = 'image';
+        const AUTOSAVE_KEY = 'emuse_audioguide_autosave';
+        let historyStack = [];
+        let historyIdx = -1;
+        let isRestoringHistory = false;
 
         const bg = document.getElementById('artwork-image-bg'), fg = document.getElementById('artwork-image-fg'), bgVid = document.getElementById('artwork-video-bg'), fgVid = document.getElementById('artwork-video-fg'), model3d = document.getElementById('artwork-model-3d'), svg = document.getElementById('annotation-layer'), list = document.getElementById('keyframe-list'), viewport = document.getElementById('viewport-container'), stage = document.getElementById('artwork-stage'), textOverlay = document.getElementById('text-cue-overlay');
         const tlCanvas = document.getElementById('timeline-canvas'), tlRuler = document.getElementById('tl-ruler'), tlLabelsRows = document.getElementById('tl-labels-rows'), tlLanes = document.getElementById('tl-lanes'), tlPlayhead = document.getElementById('tl-playhead'), tlTimeLbl = document.getElementById('tl-time'), tlZoomInp = document.getElementById('tl-zoom');
@@ -459,6 +491,21 @@
 
         document.getElementById('undo-point').onclick = () => { if (selectedIdx !== -1 && activeKeyframes[selectedIdx].points && activeKeyframes[selectedIdx].points.length > 0) { activeKeyframes[selectedIdx].points.pop(); render(); } };
         document.getElementById('clear-points').onclick = () => { if (selectedIdx !== -1) { activeKeyframes[selectedIdx].points = []; render(); } };
+        document.getElementById('capture-3d-cam').onclick = () => {
+            if (activeMediaType !== 'model3d') return alert('Switch playhead to a 3D Model cue first.');
+            const orbit = model3d.getCameraOrbit ? model3d.getCameraOrbit() : null;
+            const tgt = model3d.getCameraTarget ? model3d.getCameraTarget() : null;
+            const orbitStr = orbit ? `${orbit.theta.toFixed(3)}rad ${orbit.phi.toFixed(3)}rad ${orbit.radius.toFixed(3)}m` : model3d.getAttribute('camera-orbit') || '0deg 75deg 105%';
+            const tgtStr = tgt ? `${tgt.x.toFixed(3)}m ${tgt.y.toFixed(3)}m ${tgt.z.toFixed(3)}m` : 'auto';
+            if (selectedIdx === -1) {
+                const kf = { time: parseFloat((player.currentTime || 0).toFixed(2)), x: 50, y: 50, zoom: 1.0, radius: 5, type: 'none', effect: 'none', color: propUI.color.value, alpha: 1, thickness: 2, vSize: 1.5, easing: 'linear', points: [], cameraOrbit: orbitStr, cameraTarget: tgtStr };
+                activeKeyframes.push(kf); activeKeyframes.sort((a,b)=>a.time-b.time); selectedIdx = activeKeyframes.indexOf(kf);
+            } else {
+                activeKeyframes[selectedIdx].cameraOrbit = orbitStr;
+                activeKeyframes[selectedIdx].cameraTarget = tgtStr;
+            }
+            render();
+        };
 
         let copiedKeyframe = null;
         function cloneKf(kf) {
@@ -506,9 +553,8 @@
                 if (key === 'c') { e.preventDefault(); copyKeyframe(); return; }
                 if (key === 'x') { e.preventDefault(); cutKeyframe(); return; }
                 if (key === 'v') { e.preventDefault(); pasteKeyframe(); return; }
-                if (key === 'z' && selectedIdx !== -1 && activeKeyframes[selectedIdx].points.length > 0) {
-                    activeKeyframes[selectedIdx].points.pop(); render();
-                }
+                if (key === 'y' || (key === 'z' && e.shiftKey)) { e.preventDefault(); redoAction(); return; }
+                if (key === 'z') { e.preventDefault(); undoAction(); return; }
             }
         });
 
@@ -565,6 +611,8 @@
                 type: k1.type, color: k1.color, alpha: k1.alpha, thickness: k1.thickness, effect: k1.effect, vSize: k1.vSize,
                 x: lerp(k1.x, k2.x, alpha), y: lerp(k1.y, k2.y, alpha), zoom: lerp(k1.zoom, k2.zoom, alpha),
                 radius: lerp(k1.radius ?? 5, k2.radius ?? 5, alpha),
+                cameraOrbit: alpha < 0.5 ? k1.cameraOrbit : (k2.cameraOrbit || k1.cameraOrbit),
+                cameraTarget: alpha < 0.5 ? k1.cameraTarget : (k2.cameraTarget || k1.cameraTarget),
                 points: (k1.type === 'polygon' && k1.points && k2.points && k1.points.length === k2.points.length)
                     ? k1.points.map((p, idx) => ({ x: lerp(p.x, k2.points[idx].x, alpha), y: lerp(p.y, k2.points[idx].y, alpha) }))
                     : k1.points
@@ -580,6 +628,10 @@
                 return;
             }
             const primary = states[0];
+            if (activeMediaType === 'model3d') {
+                if (primary.cameraOrbit) model3d.setAttribute('camera-orbit', primary.cameraOrbit);
+                if (primary.cameraTarget) model3d.setAttribute('camera-target', primary.cameraTarget);
+            }
             const mx = (50 - primary.x) * primary.zoom, my = (50 - primary.y) * primary.zoom;
             bg.style.transform = fg.style.transform = svg.style.transform = `scale(${primary.zoom}) translate(${mx}%, ${my}%)`;
             const effState = states.find(st => st.effect && st.effect !== 'none') || primary;
@@ -701,6 +753,7 @@
             syncAnnoLayerUI();
             if (typeof renderAtPlayhead === 'function') renderAtPlayhead(player.currentTime || 0, true);
             if (typeof renderTimeline === 'function') renderTimeline();
+            if (!isDragging && typeof saveSnapshot === 'function') saveSnapshot();
         }
 
         const lerp = (a, b, t) => a + (b - a) * t;
@@ -762,8 +815,30 @@
             }
         }
 
+        function speakTts(text, voiceURI, rate) {
+            if (!('speechSynthesis' in window) || !text) return;
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            u.rate = rate || 1;
+            if (voiceURI) {
+                const v = window.speechSynthesis.getVoices().find(x => x.voiceURI === voiceURI);
+                if (v) u.voice = v;
+            }
+            window.speechSynthesis.speak(u);
+        }
+
         function syncExtraAudio(t, isPaused) {
             audioTracks.slice(1).forEach(tr => {
+                if (tr.type === 'tts') {
+                    const dur = tr.duration > 0 ? tr.duration : Math.max(2, (tr.ttsText || '').length * 0.08);
+                    const inRange = t >= tr.start && t <= tr.start + dur;
+                    if (inRange && !isPaused) {
+                        if (!tr._spoken) { tr._spoken = true; speakTts(tr.ttsText, tr.voiceURI, tr.rate); }
+                    } else {
+                        tr._spoken = false;
+                    }
+                    return;
+                }
                 if (!tr.el || !tr.src) return;
                 const dur = tr.duration > 0 ? tr.duration : (tr.el.duration || 0);
                 const inRange = t >= tr.start && (dur <= 0 || t <= tr.start + dur);
@@ -1015,7 +1090,8 @@
                 time: k.time ?? 0, x: k.x ?? 50, y: k.y ?? 50, zoom: k.zoom ?? 1, radius: k.radius ?? 5,
                 type: k.type ?? 'circle', effect: k.effect ?? 'none', color: k.color ?? '#ffd700',
                 alpha: k.alpha ?? 1, thickness: k.thickness ?? 2, vSize: k.vSize ?? 1.5,
-                easing: k.easing ?? 'linear', points: Array.isArray(k.points) ? k.points : []
+                easing: k.easing ?? 'linear', points: Array.isArray(k.points) ? k.points : [],
+                cameraOrbit: k.cameraOrbit || '', cameraTarget: k.cameraTarget || ''
             };
         }
 
@@ -1029,8 +1105,12 @@
                 }
                 if (Array.isArray(data.mediaCues)) { mediaCues = data.mediaCues; activeCueKey = ''; renderMediaCues(); }
                 if (Array.isArray(data.textCues)) { textCues = data.textCues; renderTextCues(); }
+                if (data.timing && Array.isArray(data.timing.words)) {
+                    projectTiming = data.timing;
+                    document.getElementById('captions-status').textContent = `Loaded ${projectTiming.words.length} synced words.`;
+                }
                 if (Array.isArray(data.audioTracks) && data.audioTracks.length > 0) {
-                    audioTracks = data.audioTracks.map(t => ({ ...t, el: null }));
+                    audioTracks = data.audioTracks.map(t => ({ ...t, el: null, _spoken: false }));
                     if (audioTracks[0].src && player.audio) player.audio.src = audioTracks[0].src;
                     renderAudioTracks();
                 }
@@ -1049,9 +1129,85 @@
             activeAnnoIdx = 0;
             activeKeyframes = annotationTracks[0].keyframes;
             selectedIdx = activeKeyframes.length > 0 ? 0 : -1;
-            if (selectedIdx !== -1) Object.keys(propUI).forEach(k => propUI[k].value = activeKeyframes[0][k]);
+            if (selectedIdx !== -1) Object.keys(propUI).forEach(k => { if (propUI[k] && activeKeyframes[0][k] !== undefined) propUI[k].value = activeKeyframes[0][k]; });
             syncPlayerMetadata();
             render();
+        }
+
+        function buildProject() {
+            return {
+                version: 1,
+                metadata: {
+                    title: document.getElementById('meta-title').value,
+                    artist: document.getElementById('meta-artist').value,
+                    language: document.getElementById('meta-lang').value,
+                    description: document.getElementById('meta-desc').value
+                },
+                audioTracks: audioTracks.map(({ el, _spoken, ...rest }) => rest),
+                mediaCues,
+                textCues,
+                timing: projectTiming,
+                annotations: annotationTracks.filter(a => a.keyframes.length > 0).map(a => ({ name: a.name, keyframes: a.keyframes }))
+            };
+        }
+
+        function saveSnapshot() {
+            if (isRestoringHistory) return;
+            const snap = JSON.stringify(buildProject());
+            try { localStorage.setItem(AUTOSAVE_KEY, snap); } catch (_) {}
+            if (historyIdx >= 0 && historyStack[historyIdx] === snap) return;
+            historyStack = historyStack.slice(0, historyIdx + 1);
+            historyStack.push(snap);
+            if (historyStack.length > 50) historyStack.shift();
+            historyIdx = historyStack.length - 1;
+        }
+
+        function applySnapshot(snap) {
+            isRestoringHistory = true;
+            try { loadAnnotationsData(JSON.parse(snap)); }
+            finally { isRestoringHistory = false; }
+        }
+
+        function undoAction() {
+            if (historyIdx > 0) { historyIdx--; applySnapshot(historyStack[historyIdx]); }
+        }
+        function redoAction() {
+            if (historyIdx < historyStack.length - 1) { historyIdx++; applySnapshot(historyStack[historyIdx]); }
+        }
+        document.getElementById('undo-action').onclick = undoAction;
+        document.getElementById('redo-action').onclick = redoAction;
+        document.getElementById('new-project').onclick = () => {
+            if (!confirm('Clear current project and autosave?')) return;
+            localStorage.removeItem(AUTOSAVE_KEY);
+            projectTiming = null;
+            document.getElementById('captions-status').textContent = 'No captions loaded (player falls back to timing.json).';
+            mediaCues = [{ id: 'cue-1', type: 'image', label: 'Default Artwork', src: 'carmignano.png', start: 0, end: 120, muted: true, autoRotate: true }];
+            audioTracks = [{ id: 'track-1', name: 'Main Narration', src: 'demo.mp3', start: 0, trimStart: 0, duration: 0, volume: 1, el: null }];
+            textCues = [];
+            annotationTracks = [{ id: 'anno-1', name: 'Annotation 1', keyframes: [] }];
+            activeAnnoIdx = 0; activeKeyframes = annotationTracks[0].keyframes; selectedIdx = -1;
+            renderMediaCues(); renderAudioTracks(); renderTextCues(); render();
+        };
+
+        async function blobToDataUrl(url) {
+            const res = await fetch(url);
+            const blob = await res.blob();
+            return new Promise((resolve, reject) => {
+                const r = new FileReader();
+                r.onload = () => resolve(r.result);
+                r.onerror = reject;
+                r.readAsDataURL(blob);
+            });
+        }
+
+        async function inlineBlobUrls(project) {
+            for (const c of project.mediaCues || []) {
+                if (c.src && c.src.startsWith('blob:')) c.src = await blobToDataUrl(c.src);
+            }
+            for (const t of project.audioTracks || []) {
+                if (t.src && t.src.startsWith('blob:')) t.src = await blobToDataUrl(t.src);
+            }
+            return project;
         }
 
         document.getElementById('load-default-json').onclick = async () => {
@@ -1073,29 +1229,11 @@
             importInput.value = '';
         };
 
-        function buildProject() {
-            return {
-                version: 1,
-                metadata: {
-                    title: document.getElementById('meta-title').value,
-                    artist: document.getElementById('meta-artist').value,
-                    language: document.getElementById('meta-lang').value,
-                    description: document.getElementById('meta-desc').value
-                },
-                audioTracks: audioTracks.map(({ el, ...rest }) => rest),
-                mediaCues,
-                textCues,
-                annotations: annotationTracks.filter(a => a.keyframes.length > 0).map(a => ({ name: a.name, keyframes: a.keyframes }))
-            };
-        }
-
-        document.getElementById('export-project').onclick = () => {
-            const blob = new Blob([JSON.stringify(buildProject(), null, 2)], { type: 'application/json' });
-            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'audioguide.json'; a.click();
-        };
-
         document.getElementById('publish-link').onclick = async () => {
-            const json = JSON.stringify(buildProject());
+            const proj = buildProject();
+            const hasBlobs = [...(proj.mediaCues || []), ...(proj.audioTracks || [])].some(x => x.src && x.src.startsWith('blob:'));
+            if (hasBlobs) alert('Note: Locally uploaded files (blob: URLs) only work on this browser session. Use "Publish HTML Page" for a self-contained file.');
+            const json = JSON.stringify(proj);
             const bytes = new TextEncoder().encode(json);
             let bin = '';
             bytes.forEach(b => { bin += String.fromCharCode(b); });
@@ -1113,7 +1251,7 @@
                 if (!res.ok) return alert('Could not fetch index.html template');
                 let html = await res.text();
                 const baseHref = new URL('./', window.location.href).toString();
-                const project = buildProject();
+                const project = await inlineBlobUrls(buildProject());
                 const inject = `<base href="${baseHref}">\n<script>window.__EMBEDDED_PROJECT__ = ${JSON.stringify(project).replace(/</g, '\\u003c')};<\/script>`;
                 html = html.replace('<head>', `<head>\n${inject}`);
                 const slug = (project.metadata.title || 'audioguide').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'audioguide';
@@ -1172,10 +1310,125 @@
             syncTextAtTime(t);
         };
 
+        // Mic Recording & Voice Synth (TTS)
+        let micRecorder = null;
+        let micChunks = [];
+        const recordBtn = document.getElementById('record-mic');
+        recordBtn.onclick = async () => {
+            if (micRecorder && micRecorder.state === 'recording') {
+                micRecorder.stop();
+                recordBtn.textContent = 'Record Mic';
+                recordBtn.style.background = '#b91c1c';
+                return;
+            }
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                micChunks = [];
+                micRecorder = new MediaRecorder(stream);
+                const startT = parseFloat((player.currentTime || 0).toFixed(1));
+                micRecorder.ondataavailable = (ev) => { if (ev.data.size > 0) micChunks.push(ev.data); };
+                micRecorder.onstop = () => {
+                    stream.getTracks().forEach(t => t.stop());
+                    const blob = new Blob(micChunks, { type: micRecorder.mimeType || 'audio/webm' });
+                    const url = URL.createObjectURL(blob);
+                    audioTracks.push({ id: `rec-${Date.now()}`, name: `Mic Rec @ ${startT}s`, src: url, start: startT, trimStart: 0, duration: 0, volume: 1, el: new Audio(url) });
+                    renderAudioTracks();
+                    saveSnapshot();
+                };
+                micRecorder.start();
+                recordBtn.textContent = 'Stop Rec';
+                recordBtn.style.background = '#111827';
+            } catch (err) {
+                alert('Microphone access denied or unavailable: ' + err.message);
+            }
+        };
+
+        const ttsVoiceSel = document.getElementById('tts-voice');
+        function populateVoices() {
+            if (!('speechSynthesis' in window)) return;
+            const voices = window.speechSynthesis.getVoices();
+            ttsVoiceSel.innerHTML = '<option value="">System Default</option>';
+            voices.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v.voiceURI;
+                opt.textContent = `${v.name} (${v.lang})`;
+                ttsVoiceSel.appendChild(opt);
+            });
+        }
+        populateVoices();
+        if ('speechSynthesis' in window) window.speechSynthesis.onvoiceschanged = populateVoices;
+
+        document.getElementById('tts-preview').onclick = () => {
+            const txt = document.getElementById('tts-text').value.trim();
+            if (!txt) return alert('Enter text to synthesize!');
+            speakTts(txt, ttsVoiceSel.value, parseFloat(document.getElementById('tts-rate').value) || 1);
+        };
+
+        document.getElementById('tts-add').onclick = () => {
+            const txt = document.getElementById('tts-text').value.trim();
+            if (!txt) return alert('Enter text to synthesize!');
+            const startT = parseFloat((player.currentTime || 0).toFixed(1));
+            const rate = parseFloat(document.getElementById('tts-rate').value) || 1;
+            const estDur = Math.max(2, parseFloat((txt.split(/\s+/).length * 0.45 / rate).toFixed(1)));
+            audioTracks.push({
+                id: `tts-${Date.now()}`, type: 'tts',
+                name: `TTS: ${txt.slice(0, 18)}`,
+                ttsText: txt, voiceURI: ttsVoiceSel.value, rate,
+                src: '', start: startT, trimStart: 0, duration: estDur, volume: 1, el: null, _spoken: false
+            });
+            renderAudioTracks();
+            saveSnapshot();
+        };
+
+        // Captions / VTT Import
+        function parseVttToTiming(vttText) {
+            const words = [];
+            const toSec = (ts) => {
+                const p = ts.trim().replace(',', '.').split(':').map(Number);
+                return p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p[0] * 60 + p[1];
+            };
+            const blocks = vttText.replace(/\r/g, '').split(/\n\n+/);
+            blocks.forEach(b => {
+                const lines = b.split('\n').filter(Boolean);
+                const tsLine = lines.find(l => l.includes('-->'));
+                if (!tsLine) return;
+                const [sStr, eStr] = tsLine.split('-->');
+                const start = toSec(sStr), end = toSec(eStr.split(' ')[0]);
+                const text = lines.slice(lines.indexOf(tsLine) + 1).join(' ').replace(/<[^>]+>/g, '').trim();
+                const tokens = text.split(/\s+/).filter(Boolean);
+                const step = tokens.length > 0 ? (end - start) / tokens.length : 0;
+                tokens.forEach((w, idx) => words.push({ word: w, start: parseFloat((start + idx * step).toFixed(2)), end: parseFloat((start + (idx + 1) * step).toFixed(2)) }));
+            });
+            return { words };
+        }
+
+        const capPicker = document.getElementById('captions-file-picker');
+        document.getElementById('import-captions').onclick = () => capPicker.click();
+        capPicker.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const txt = await file.text();
+            try {
+                if (file.name.endsWith('.vtt')) projectTiming = parseVttToTiming(txt);
+                else projectTiming = JSON.parse(txt);
+                document.getElementById('captions-status').textContent = `Loaded ${projectTiming.words?.length || 0} synced words from ${file.name}.`;
+                saveSnapshot();
+            } catch (err) {
+                alert('Could not parse captions file: ' + err.message);
+            }
+            capPicker.value = '';
+        };
+
         renderMediaCues();
         renderAudioTracks();
         renderTextCues();
         syncAnnoLayerUI();
+
+        try {
+            const saved = localStorage.getItem(AUTOSAVE_KEY);
+            if (saved) applySnapshot(saved);
+        } catch (_) {}
+        saveSnapshot();
 
         // Multi-Track Timeline Logic
 
@@ -1204,10 +1457,25 @@
             document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${name}`));
         }
 
+        function snapTime(val, skipSnap) {
+            if (skipSnap) return val;
+            const targets = [player.currentTime || 0];
+            mediaCues.forEach(c => { targets.push(c.start ?? 0, c.end ?? 0); });
+            textCues.forEach(c => { targets.push(c.start ?? 0, c.end ?? 0); });
+            audioTracks.forEach(tr => { targets.push(tr.start ?? 0); });
+            annotationTracks.forEach(tr => tr.keyframes.forEach(k => targets.push(k.time ?? 0)));
+            let best = val, minD = 0.35;
+            for (const tgt of targets) {
+                const d = Math.abs(val - tgt);
+                if (d > 0.001 && d < minD) { minD = d; best = tgt; }
+            }
+            return parseFloat(best.toFixed(2));
+        }
+
         function startTlDrag(e, onMove, onEnd) {
             e.stopPropagation();
             const startX = e.clientX;
-            const move = (ev) => onMove(ev.clientX - startX);
+            const move = (ev) => onMove(ev.clientX - startX, ev);
             const up = () => {
                 window.removeEventListener('pointermove', move);
                 window.removeEventListener('pointerup', up);
@@ -1312,8 +1580,8 @@
                 rz.className = 'tl-clip-resize';
                 rz.onpointerdown = (e) => {
                     const origEnd = en;
-                    startTlDrag(e, (dx) => {
-                        cue.end = parseFloat(Math.max(st + 0.5, origEnd + dx / pxPerSec).toFixed(1));
+                    startTlDrag(e, (dx, ev) => {
+                        cue.end = snapTime(parseFloat(Math.max(st + 0.5, origEnd + dx / pxPerSec).toFixed(1)), ev.shiftKey);
                         el.style.width = `${Math.max(16, (cue.end - st) * pxPerSec)}px`;
                     }, () => { activeCueKey = ''; renderMediaCues(); renderTimeline(); });
                 };
@@ -1322,9 +1590,9 @@
                     if (e.target === rz) return;
                     const origStart = st, origLen = en - st;
                     let moved = false;
-                    startTlDrag(e, (dx) => {
+                    startTlDrag(e, (dx, ev) => {
                         if (Math.abs(dx) > 3) moved = true;
-                        cue.start = parseFloat(Math.max(0, origStart + dx / pxPerSec).toFixed(1));
+                        cue.start = snapTime(parseFloat(Math.max(0, origStart + dx / pxPerSec).toFixed(1)), ev.shiftKey);
                         cue.end = parseFloat((cue.start + origLen).toFixed(1));
                         el.style.left = `${cue.start * pxPerSec}px`;
                     }, () => {
@@ -1421,7 +1689,7 @@
                         const targetKf = isAlt ? { ...kf, points: (kf.points || []).map(p => ({ ...p })) } : kf;
                         let moved = false;
                         let duplicated = false;
-                        startTlDrag(e, (dx) => {
+                        startTlDrag(e, (dx, ev) => {
                             if (Math.abs(dx) > 3) {
                                 moved = true;
                                 if (isAlt && !duplicated) {
@@ -1434,7 +1702,7 @@
                                     lane.appendChild(ghost);
                                 }
                             }
-                            targetKf.time = parseFloat(Math.max(0, origTime + dx / pxPerSec).toFixed(2));
+                            targetKf.time = snapTime(parseFloat(Math.max(0, origTime + dx / pxPerSec).toFixed(2)), ev.shiftKey);
                             marker.style.left = `${targetKf.time * pxPerSec}px`;
                         }, () => {
                             activeAnnoIdx = tIdx;
