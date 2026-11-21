@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Audioguida | E-MUSE</title>
-    <link rel="stylesheet" href="shinkwasa.css" />
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
     <style>
       :root {
@@ -214,7 +213,7 @@
     </div>
 
     <script type="module">
-      import { Player } from "./shinkwasa.js";
+      import { Player } from "./player.js";
 
       document.addEventListener("DOMContentLoaded", async () => {
         const main = document.getElementById('main-content');
@@ -610,14 +609,11 @@
                 if (m.title) {
                   document.getElementById('artwork-title').textContent = m.title;
                   document.title = `${m.title} | E-MUSE`;
-                  const shkTitle = document.querySelector('#player .shk-title');
-                  if (shkTitle) shkTitle.textContent = m.title;
                 }
                 if (m.artist) {
                   document.getElementById('artwork-artist').textContent = m.artist;
-                  const shkArtist = document.querySelector('#player .shk-artist');
-                  if (shkArtist) shkArtist.textContent = m.artist;
                 }
+                player.setMeta({ title: m.title, artist: m.artist });
                 if (m.language) document.documentElement.lang = m.language;
                 if (m.description) {
                   const infoBtn = document.getElementById('toggle-info');

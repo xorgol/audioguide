@@ -2,7 +2,7 @@
   "name": "audioguide",
   "version": "1.0.0",
   "description": "",
-  "main": "._shinkwasa.js",
+  "main": "player.js",
   "scripts": {
     "test": "playwright test",
     "test:ui": "playwright test --ui"

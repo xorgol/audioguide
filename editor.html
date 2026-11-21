@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>E-MUSE | Audioguide Studio & Editor</title>
-    <link rel="stylesheet" href="shinkwasa.css">
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
     <style>
         :root { --primary: #954747; --bg: #f5f5f5; --panel: #ffffff; --text: #333; }
@@ -307,7 +306,7 @@
     </div>
 
     <script type="module">
-        import { Player } from "./shinkwasa.js";
+        import { Player } from "./player.js";
 
         let annotationTracks = [{ id: 'anno-1', name: 'Annotation 1', keyframes: [] }];
         let activeAnnoIdx = 0;
@@ -383,10 +382,7 @@
         function syncPlayerMetadata() {
             const title = document.getElementById('meta-title').value || 'Untitled';
             const artist = document.getElementById('meta-artist').value || 'Unknown Artist';
-            const tEl = document.querySelector('#player .shk-title');
-            const aEl = document.querySelector('#player .shk-artist');
-            if (tEl) tEl.textContent = title;
-            if (aEl) aEl.textContent = artist;
+            player.setMeta({ title, artist });
         }
         document.getElementById('meta-title').addEventListener('input', syncPlayerMetadata);
         document.getElementById('meta-artist').addEventListener('input', syncPlayerMetadata);

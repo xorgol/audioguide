@@ -7,7 +7,6 @@ test.describe('Axe Accessibility Tests', () => {
 
     const accessibilityScanResults = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .exclude('.shk-bar') // Exclude Shikwasa player progress bar known nesting issues
       .analyze();
 
     expect(accessibilityScanResults.violations).toEqual([]);
